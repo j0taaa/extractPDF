@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs/promises');
 const ollama = require('ollama');
 const cors = require('cors');
+
 require('dotenv').config();
 
 const app = express();
@@ -29,6 +30,18 @@ async function pdfToImages(pdfPath, outputDir) {
   const images = files.filter(f => f.endsWith('.png')).sort((a, b) => a.localeCompare(b)).map(f => path.join(outputDir, f));
   console.log('Generated images:', images);
   return images;
+}
+
+function getNested(obj, path) {
+  let current = obj;
+  for (const key of path) {
+    if (current && typeof current === 'object' && current[key] !== undefined && current[key] !== null) {
+      current = current[key];
+    } else {
+      return '';
+    }
+  }
+  return typeof current === 'string' ? current : '';
 }
 
 function getNested(obj, path) {
@@ -75,6 +88,7 @@ async function analyzeImage(imagePath, page, userPrompt) {
     const content = getNested(data, ['choices', 0, 'message', 'content']);
     console.log(`OpenRouter response for page ${page}:`, content);
     return content;
+
   } else {
     const result = await ollama.chat({
       model: 'gemma3n:4b',
@@ -89,6 +103,7 @@ async function analyzeImage(imagePath, page, userPrompt) {
     const content = getNested(result, ['message', 'content']);
     console.log(`Ollama response for page ${page}:`, content);
     return content;
+
   }
 }
 
