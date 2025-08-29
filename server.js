@@ -2,9 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs/promises');
-const { Poppler } = require('pdf-poppler');
 const ollama = require('ollama');
-const fetch = require('node-fetch');
 require('dotenv').config();
 
 const app = express();
@@ -16,6 +14,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 async function pdfToImages(pdfPath, outputDir) {
   await fs.mkdir(outputDir, { recursive: true });
+  const { Poppler } = require('pdf-poppler');
   const poppler = new Poppler();
   const opts = {
     format: 'png',
@@ -27,11 +26,24 @@ async function pdfToImages(pdfPath, outputDir) {
   return files.filter(f => f.endsWith('.png')).sort((a, b) => a.localeCompare(b)).map(f => path.join(outputDir, f));
 }
 
+function getNested(obj, path) {
+  let current = obj;
+  for (const key of path) {
+    if (current && typeof current === 'object' && current[key] !== undefined && current[key] !== null) {
+      current = current[key];
+    } else {
+      return '';
+    }
+  }
+  return typeof current === 'string' ? current : '';
+}
+
 async function analyzeImage(imagePath, page, userPrompt) {
   const imageBase64 = await fs.readFile(imagePath, { encoding: 'base64' });
   const prompt = `${userPrompt}\nReturn a JSON object of any data you find on the page. Include the page number.`;
 
   if (ENV === 'openrouter') {
+    const fetch = (await import('node-fetch')).default;
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -54,7 +66,7 @@ async function analyzeImage(imagePath, page, userPrompt) {
       })
     });
     const data = await response.json();
-    return data?.choices?.[0]?.message?.content || '';
+    return getNested(data, ['choices', 0, 'message', 'content']);
   } else {
     const result = await ollama.chat({
       model: 'gemma3n:4b',
@@ -66,7 +78,7 @@ async function analyzeImage(imagePath, page, userPrompt) {
         }
       ]
     });
-    return result?.message?.content || '';
+    return getNested(result, ['message', 'content']);
   }
 }
 
