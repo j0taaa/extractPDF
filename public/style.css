@@ -1,0 +1,8 @@
+body {
+  font-family: Arial, sans-serif;
+}
+#jsonOutput {
+  background: #f8f9fa;
+  border-radius: 4px;
+  padding: 15px;
+}
