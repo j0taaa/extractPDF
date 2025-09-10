@@ -1,25 +1,24 @@
-# PDF Analyzer
+# extractPDF
 
-This project provides a simple web interface to analyze PDF files page by page using [Ollama](https://ollama.com/) locally or [OpenRouter](https://openrouter.ai/) remotely.
+A Next.js application that will power a PDF analysis platform. The project currently includes user authentication using [Better Auth](https://github.com/better-auth/better-auth) and persists data in PostgreSQL.
 
-## Features
-- Converts uploaded PDF files into images (one per page)
-- Sends each page image to an AI model for analysis
-- Aggregates results and displays them in a web UI
+## Getting Started
 
-## Setup
-1. Install dependencies:
+1. Copy `.env.example` to `.env` and adjust the values.
+2. Start a PostgreSQL database (e.g. `docker compose up db`).
+3. Install dependencies and run the development server:
    ```bash
    npm install
+   npm run dev
    ```
-2. Copy `.env.example` to `.env` and adjust values.
-3. Ensure [Poppler](https://poppler.freedesktop.org/) is installed for `pdftoppm` conversion.
-4. Start the server:
-   ```bash
-   npm start
-   ```
-5. Open `http://localhost:3000` in your browser.
+4. Visit [http://localhost:3000](http://localhost:3000) to access the site.
 
-## Environment
-- `ENVIRONMENT=local` uses Ollama with the `gemma3n:4b` model.
-- `ENVIRONMENT=openrouter` uses the OpenRouter API. Set `OPENROUTER_KEY` and optionally `OPENROUTER_MODEL` in `.env`.
+## Docker
+
+A `Dockerfile` and `docker-compose.yml` are provided. To run the app and database in containers:
+
+```bash
+docker compose up --build
+```
+
+The web application will be available at `http://localhost:3000` and PostgreSQL will listen on port `5432`.
