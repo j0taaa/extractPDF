@@ -6,12 +6,19 @@ A Next.js application that will power a PDF analysis platform. The project curre
 
 1. Copy `.env.example` to `.env` and adjust the values.
 2. Start a PostgreSQL database (e.g. `docker compose up db`).
-3. Install dependencies and run the development server:
+3. Install dependencies:
    ```bash
    npm install
+   ```
+4. Run database migrations:
+   ```bash
+   npm run migrate
+   ```
+5. Start the development server:
+   ```bash
    npm run dev
    ```
-4. Visit [http://localhost:3000](http://localhost:3000) to access the site.
+6. Visit [http://localhost:3000](http://localhost:3000) to access the site.
 
 ## Docker
 
