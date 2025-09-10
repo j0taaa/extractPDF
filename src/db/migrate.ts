@@ -1,7 +1,7 @@
 import { Kysely, PostgresDialect, Migrator, FileMigrationProvider } from "kysely";
 import { Pool } from "pg";
-import * as path from "path";
-import * as fs from "fs";
+import path from "path";
+import { promises as fs } from "fs";
 
 async function migrate() {
   const db = new Kysely<any>({
