@@ -2,8 +2,9 @@ import { Kysely, PostgresDialect, Migrator, FileMigrationProvider } from "kysely
 import { Pool } from "pg";
 import path from "path";
 import { promises as fs } from "fs";
+import { fileURLToPath } from "url";
 
-async function migrate() {
+export async function migrateToLatest() {
   const db = new Kysely<any>({
     dialect: new PostgresDialect({
       pool: new Pool({ connectionString: process.env.DATABASE_URL })
@@ -37,4 +38,6 @@ async function migrate() {
   await db.destroy();
 }
 
-migrate();
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  migrateToLatest();
+}
