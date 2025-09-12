@@ -4,11 +4,15 @@ services:
     build: .
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/extractpdf
-      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-better-auth-secret-123456789}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+    restart: unless-stopped
     depends_on:
-      - db
+      db:
+        condition: service_healthy
   db:
     image: postgres:15
     environment:
@@ -17,3 +21,8 @@ services:
       POSTGRES_DB: extractpdf
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
