@@ -22,24 +22,37 @@ export default function LoginPage() {
   };
 
   return (
-    <div>
-      <h1>Login</h1>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <button type="submit">Sign In</button>
+    <div className="mx-auto max-w-md">
+      <h1 className="text-2xl font-semibold mb-6">Sign in</h1>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Email</label>
+          <input
+            className="block w-full rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-black px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Password</label>
+          <input
+            className="block w-full rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-black px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
+        <button
+          className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-500 w-full"
+          type="submit"
+        >
+          Sign in
+        </button>
       </form>
     </div>
   );

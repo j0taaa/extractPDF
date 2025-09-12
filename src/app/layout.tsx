@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import Header from "@/components/Header";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "extractPDF",
@@ -13,7 +15,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="min-h-dvh bg-white text-gray-900 dark:bg-black dark:text-gray-100">
+        <ThemeProvider>
+          <Header />
+          <main className="container py-8">{children}</main>
+        </ThemeProvider>
+      </body>
     </html>
   );
 }
