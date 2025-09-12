@@ -7,22 +7,22 @@ export default function Header() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   return (
-    <header className="border-b bg-white/70 dark:bg-black/50 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-black/40 sticky top-0 z-40">
-      <div className="container flex items-center justify-between py-3">
-        <Link href="/" className="flex items-center gap-2 text-xl font-semibold">
-          <img src="/logo.svg" alt="Logo" className="h-8 w-8" />
-          <span>ExtractPDF</span>
+    <header className="sticky top-0 z-50 border-b bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:border-neutral-800 dark:bg-black/40 dark:supports-[backdrop-filter]:bg-black/30">
+      <div className="container flex items-center justify-between py-4">
+        <Link href="/" className="group flex items-center gap-3 text-xl font-semibold">
+          <img src="/logo.svg" alt="Logo" className="h-9 w-9 transition-transform group-hover:scale-105" />
+          <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">ExtractPDF</span>
         </Link>
-        <nav className="flex items-center gap-6 text-sm">
+        <nav className="flex items-center gap-2 text-sm">
           <Link className={navClass(pathname === "/dashboard")} href="/dashboard">Dashboard</Link>
           <Link className={navClass(pathname === "/login")} href="/login">Login</Link>
           <Link className={navClass(pathname === "/register")} href="/register">Register</Link>
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="rounded-md border px-2 py-1 text-xs hover:bg-gray-50 dark:hover:bg-gray-900"
+            className="ml-1 inline-flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white/70 text-neutral-700 shadow-sm transition hover:bg-white dark:border-neutral-800 dark:bg-black/60 dark:text-neutral-300 dark:hover:bg-black"
             aria-label="Toggle theme"
           >
-            {theme === "dark" ? "Light" : "Dark"}
+            <span className="text-base">{theme === "dark" ? "🌙" : "☀️"}</span>
           </button>
         </nav>
       </div>
@@ -32,8 +32,10 @@ export default function Header() {
 
 function navClass(active: boolean) {
   return (
-    "transition-colors hover:text-blue-600 dark:hover:text-blue-400" +
-    (active ? " text-blue-600 dark:text-blue-400 font-medium" : " text-gray-600 dark:text-gray-300")
+    "rounded-full px-3 py-1.5 transition-colors border " +
+    (active
+      ? "border-blue-500/30 bg-blue-500/10 text-blue-700 hover:text-blue-800 dark:border-blue-400/30 dark:bg-blue-400/10 dark:text-blue-300"
+      : "border-transparent text-gray-700 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-900")
   );
 }
 
