@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  outputFileTracingIncludes: {
+    "/api/auth/[...auth]": ["src/db/migrations/*"],
+  },
 };
 
 export default nextConfig;
