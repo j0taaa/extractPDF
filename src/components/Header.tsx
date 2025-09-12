@@ -11,7 +11,7 @@ export default function Header() {
       <div className="container flex items-center justify-between py-4">
         <Link href="/" className="group flex items-center gap-3 text-xl font-semibold">
           <img src="/logo.svg" alt="Logo" className="h-9 w-9 transition-transform group-hover:scale-105" />
-          <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">ExtractPDF</span>
+          <span className="heading-gradient">ExtractPDF</span>
         </Link>
         <nav className="flex items-center gap-2 text-sm">
           <Link className={navClass(pathname === "/dashboard")} href="/dashboard">Dashboard</Link>
@@ -19,7 +19,7 @@ export default function Header() {
           <Link className={navClass(pathname === "/register")} href="/register">Register</Link>
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="ml-1 inline-flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white/70 text-neutral-700 shadow-sm transition hover:bg-white dark:border-neutral-800 dark:bg-black/60 dark:text-neutral-300 dark:hover:bg-black"
+            className="ml-1 inline-flex h-9 w-9 items-center justify-center rounded-full border border-neutral-200 bg-white/70 text-neutral-700 shadow-sm transition hover:bg-white dark:border-neutral-800 dark:bg-black/60 dark:text-neutral-300 dark:hover:bg-black cursor-pointer"
             aria-label="Toggle theme"
           >
             <span className="text-base">{theme === "dark" ? "🌙" : "☀️"}</span>
@@ -32,10 +32,10 @@ export default function Header() {
 
 function navClass(active: boolean) {
   return (
-    "rounded-full px-3 py-1.5 transition-colors border " +
+    "btn btn-sm btn-ghost " +
     (active
       ? "border-blue-500/30 bg-blue-500/10 text-blue-700 hover:text-blue-800 dark:border-blue-400/30 dark:bg-blue-400/10 dark:text-blue-300"
-      : "border-transparent text-gray-700 hover:bg-gray-100/60 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-900")
+      : "")
   );
 }
 

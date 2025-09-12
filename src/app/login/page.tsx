@@ -49,7 +49,7 @@ export default function LoginPage() {
             />
           </div>
           <button
-            className="inline-flex w-full items-center justify-center rounded-full bg-blue-600 px-4 py-2.5 font-medium text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-500"
+            className="btn btn-primary w-full"
             type="submit"
           >
             Sign in
