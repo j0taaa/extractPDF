@@ -25,8 +25,8 @@ export default function RootLayout({
         </div>
         <ThemeProvider>
           <Header />
-          <main className="container flex-1 py-10 sm:py-12 lg:py-16">{children}</main>
-          <footer className="border-t py-8 text-sm text-neutral-600 dark:text-neutral-400">
+          <main className="container flex-1 py-12 sm:py-16 lg:py-20">{children}</main>
+          <footer className="border-t py-10 text-sm text-neutral-600 dark:text-neutral-400">
             <div className="container flex flex-col items-center justify-between gap-4 sm:flex-row">
               <div className="flex items-center gap-2">
                 <img src="/logo.svg" alt="Logo" className="h-6 w-6" />
