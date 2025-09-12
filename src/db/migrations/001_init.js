@@ -1,9 +1,10 @@
-import { sql } from "kysely";
+const { sql } = require("kysely");
 
 /**
  * @param {import('kysely').Kysely<any>} db
  */
-export async function up(db) {
+async function up(db) {
+
   await db.schema
     .createTable("users")
     .addColumn("id", "text", (col) => col.primaryKey())
@@ -64,10 +65,14 @@ export async function up(db) {
 /**
  * @param {import('kysely').Kysely<any>} db
  */
-export async function down(db) {
+async function down(db) {
+
   await db.schema.dropTable("authenticators").execute();
   await db.schema.dropTable("verification_tokens").execute();
   await db.schema.dropTable("user_keys").execute();
   await db.schema.dropTable("sessions").execute();
   await db.schema.dropTable("users").execute();
 }
+
+module.exports = { up, down };
+
