@@ -22,9 +22,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="mx-auto max-w-md">
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white/70 p-6 shadow-sm backdrop-blur dark:border-gray-800 dark:bg-black/50">
-        <h1 className="mb-6 text-2xl font-semibold">Welcome back</h1>
+    <div className="flex min-h-[80dvh] items-center justify-center">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-gray-200 bg-white/70 p-6 shadow-sm backdrop-blur dark:border-gray-800 dark:bg-black/50">
+        <h1 className="mb-6 text-2xl font-semibold text-center">Welcome back</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium">Email</label>

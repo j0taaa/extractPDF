@@ -30,11 +30,11 @@ export default function Home() {
       <section className="section py-10">
         <div className="rounded-2xl border border-neutral-200 bg-white/60 p-4 backdrop-blur dark:border-neutral-800 dark:bg-black/40">
           <div className="grid grid-cols-2 items-center gap-6 text-center sm:grid-cols-3 lg:grid-cols-6">
-            {["Acme", "Globex", "Umbrella", "Initech", "Soylent", "Stark"].map((brand) => (
-              <div key={brand} className="text-sm text-neutral-500 dark:text-neutral-400">{brand}</div>
-            ))}
-          </div>
-        </div>
+      {["Acme", "Globex", "Umbrella", "Initech", "Soylent", "Stark"].map((brand) => (
+        <div key={brand} className="text-sm text-neutral-500 dark:text-neutral-400">{brand}</div>
+      ))}
+    </div>
+  </div>
       </section>
 
       {/* How it works */}
@@ -97,6 +97,27 @@ export default function Home() {
             <div key={t.author} className="card">
               <p className="text-sm text-neutral-700 dark:text-neutral-200">“{t.quote}”</p>
               <p className="mt-3 text-xs text-neutral-500">{t.author}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="section">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="text-2xl font-bold">FAQ</h2>
+          <p className="mt-2 text-neutral-600 dark:text-neutral-300">Answers to common questions.</p>
+        </div>
+        <div className="mt-8 grid gap-6 sm:grid-cols-2">
+          {[
+            { q: "Is my data secure?", a: "We encrypt every file and never share your content." },
+            { q: "Do you support images?", a: "Built-in OCR extracts text from scans and photos." },
+            { q: "Can I use it for free?", a: "Yes, start with a generous free tier." },
+            { q: "What formats can I export?", a: "Download JSON, CSV, or sync directly to your database." },
+          ].map((f) => (
+            <div key={f.q} className="card text-left">
+              <h3 className="font-semibold">{f.q}</h3>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{f.a}</p>
             </div>
           ))}
         </div>
