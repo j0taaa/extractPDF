@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { nextCookies, toNextJsHandler } from "better-auth/next-js";
-import { Kysely, PostgresDialect, sql } from "kysely";
+import { Kysely, PostgresDialect } from "kysely";
 import { Pool } from "pg";
 import { migrateToLatest } from "@/db/migrate";
 
@@ -10,17 +10,9 @@ const db = new Kysely({
   })
 });
 
-async function ensureMigrated() {
-  const { rows } = await sql<{
-    exists: string | null;
-  }>`select to_regclass('public.users') as exists`.execute(db);
-  if (!rows[0]?.exists) {
-    await migrateToLatest();
-  }
-}
-
+// Run migrations at runtime (both dev and prod), but skip during build step
 if (process.env.NEXT_PHASE !== "phase-production-build") {
-  await ensureMigrated();
+  await migrateToLatest();
 }
 
 const auth = betterAuth({
