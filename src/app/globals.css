@@ -52,7 +52,7 @@ html, body, * {
     @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
   }
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-semibold cursor-pointer select-none transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed dark:focus-visible:ring-offset-black;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-semibold cursor-pointer select-none transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed dark:focus-visible:ring-offset-black;
   }
   .btn-lg {
     @apply px-5 py-3 text-base;
@@ -69,13 +69,23 @@ html, body, * {
   .btn-ghost {
     @apply border border-transparent text-gray-700 hover:-translate-y-0.5 hover:bg-gray-100/70 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-white/5;
   }
+  .btn-outline {
+    @apply border border-gray-300 bg-transparent text-gray-900 hover:-translate-y-0.5 hover:bg-white dark:border-gray-700 dark:text-gray-100 dark:hover:bg-black;
+  }
+  .btn-white {
+    @apply bg-white text-blue-700 shadow-sm hover:-translate-y-0.5 hover:bg-white/90 dark:text-blue-300;
+  }
 
   .chip {
     @apply inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-400/30 dark:bg-blue-400/10 dark:text-blue-300;
   }
 
   .card {
-    @apply relative overflow-hidden rounded-2xl border border-gray-200 bg-white/70 p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800 dark:bg-black/50;
+    @apply relative overflow-hidden rounded-2xl border border-gray-200/80 bg-white/70 p-6 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800/80 dark:bg-black/40;
+  }
+
+  .input {
+    @apply block w-full rounded-xl border-gray-300 bg-white px-3.5 py-2.5 shadow-sm outline-none ring-0 transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-black dark:placeholder:text-gray-500;
   }
 
   .section {
