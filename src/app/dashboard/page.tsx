@@ -58,14 +58,14 @@ export default function DashboardPage() {
       <div className="space-y-4 lg:col-span-2">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Your projects</h1>
-          <Link href="/dashboard" className="hidden rounded-full border border-gray-200 bg-white/70 px-3 py-1.5 text-sm text-gray-900 transition hover:bg-gray-100 dark:border-gray-800 dark:bg-black/60 dark:text-gray-100 dark:hover:bg-black lg:inline-flex">Refresh</Link>
+          <Link href="/dashboard" className="hidden btn btn-sm btn-secondary lg:inline-flex">Refresh</Link>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           {projects.map((p: Project) => (
             <Link
               key={p.id}
               href={`/projects/${p.id}`}
-              className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white/70 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800 dark:bg-black/50"
+              className="group card cursor-pointer p-5"
             >
               <div className="pointer-events-none absolute -top-16 right-0 h-40 w-40 rounded-full bg-gradient-to-tr from-blue-400/20 via-purple-400/10 to-pink-400/10 blur-2xl" />
               <div className="flex items-center justify-between">
@@ -114,7 +114,7 @@ export default function DashboardPage() {
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex w-full items-center justify-center rounded-full bg-blue-600 px-4 py-2.5 font-medium text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-500 disabled:opacity-50"
+              className="btn btn-primary w-full"
             >
               {loading ? "Creating..." : "Create project"}
             </button>

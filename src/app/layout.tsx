@@ -26,6 +26,20 @@ export default function RootLayout({
         <ThemeProvider>
           <Header />
           <main className="container py-10 sm:py-12 lg:py-16">{children}</main>
+          <footer className="border-t py-8 text-sm text-neutral-600 dark:text-neutral-400">
+            <div className="container flex flex-col items-center justify-between gap-4 sm:flex-row">
+              <div className="flex items-center gap-2">
+                <img src="/logo.svg" alt="Logo" className="h-6 w-6" />
+                <span className="font-semibold">ExtractPDF</span>
+                <span className="opacity-70">© {new Date().getFullYear()}</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <a className="btn btn-sm btn-ghost" href="#">Privacy</a>
+                <a className="btn btn-sm btn-ghost" href="#">Terms</a>
+                <a className="btn btn-sm btn-ghost" href="#">Contact</a>
+              </div>
+            </div>
+          </footer>
         </ThemeProvider>
       </body>
     </html>
