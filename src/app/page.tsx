@@ -6,7 +6,7 @@ export default function Home() {
       {/* Hero */}
       <section className="relative section-narrow min-h-[85dvh] flex items-center">
         <div className="absolute -top-16 right-1/2 h-64 w-64 translate-x-1/2 rounded-full bg-gradient-to-tr from-blue-400/30 via-purple-400/20 to-pink-400/20 blur-3xl dark:from-blue-900/30 dark:via-purple-900/20 dark:to-pink-900/20" />
-        <div className="flex w-full flex-col items-center gap-6 text-center">
+        <div className="flex w-full flex-col items-center gap-8 text-center">
           <span className="chip">New • AI-assisted PDF insights</span>
           <div className="flex items-center gap-4">
             <img src="/logo.svg" alt="Logo" className="h-16 w-16" />
@@ -17,7 +17,7 @@ export default function Home() {
           <p className="lead">
             Transform PDFs into structured knowledge. Upload, analyze, and extract insights with a beautiful, fast, and privacy-first experience.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-4">
             <Link href="/register" className="btn btn-lg btn-primary">Get started</Link>
             <Link href="/login" className="btn btn-lg btn-secondary">Sign in</Link>
             <Link href="/dashboard" className="btn btn-lg btn-ghost">Dashboard</Link>
