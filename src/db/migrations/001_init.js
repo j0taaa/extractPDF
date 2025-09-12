@@ -4,6 +4,7 @@ const { sql } = require("kysely");
  * @param {import('kysely').Kysely<any>} db
  */
 async function up(db) {
+
   await db.schema
     .createTable("users")
     .addColumn("id", "text", (col) => col.primaryKey())
@@ -65,6 +66,7 @@ async function up(db) {
  * @param {import('kysely').Kysely<any>} db
  */
 async function down(db) {
+
   await db.schema.dropTable("authenticators").execute();
   await db.schema.dropTable("verification_tokens").execute();
   await db.schema.dropTable("user_keys").execute();
@@ -73,3 +75,4 @@ async function down(db) {
 }
 
 module.exports = { up, down };
+
