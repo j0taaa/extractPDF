@@ -10,14 +10,14 @@ export default async function ProjectPage({ params }: { params: { id: string } }
   const { id } = params;
   const project = await fetchProject(id);
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-3xl space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{project?.name ?? "Project"}</h1>
+        <h1 className="text-3xl font-bold heading-gradient">{project?.name ?? "Project"}</h1>
         <Link href="/dashboard" className="btn btn-sm btn-secondary">Back</Link>
       </div>
 
       <div className="card">
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid gap-8 sm:grid-cols-2">
           <div>
             <p className="text-sm text-gray-500">Project ID</p>
             <p className="font-mono text-lg">{id}</p>
@@ -28,7 +28,7 @@ export default async function ProjectPage({ params }: { params: { id: string } }
           </div>
         </div>
         {project?.description ? (
-          <div className="mt-6">
+          <div className="mt-8">
             <p className="text-sm text-gray-500">Description</p>
             <p className="text-gray-700 dark:text-gray-300">{project.description}</p>
           </div>

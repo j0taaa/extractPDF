@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -24,13 +25,13 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-[80dvh] items-center justify-center">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-gray-200 bg-white/70 p-6 shadow-sm backdrop-blur dark:border-gray-800 dark:bg-black/50">
-        <h1 className="mb-6 text-2xl font-semibold text-center">Create your account</h1>
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="card w-full max-w-md">
+        <h1 className="mb-8 text-center text-3xl font-bold heading-gradient">Create your account</h1>
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="mb-1 block text-sm font-medium">Name</label>
             <input
-              className="block w-full rounded-lg border-gray-300 bg-white px-3.5 py-2.5 shadow-sm outline-none ring-0 transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-black dark:placeholder:text-gray-500"
+              className="input"
               type="text"
               placeholder="Jane Doe"
               value={name}
@@ -41,7 +42,7 @@ export default function RegisterPage() {
           <div>
             <label className="mb-1 block text-sm font-medium">Email</label>
             <input
-              className="block w-full rounded-lg border-gray-300 bg-white px-3.5 py-2.5 shadow-sm outline-none ring-0 transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-black dark:placeholder:text-gray-500"
+              className="input"
               type="email"
               placeholder="you@example.com"
               value={email}
@@ -52,7 +53,7 @@ export default function RegisterPage() {
           <div>
             <label className="mb-1 block text-sm font-medium">Password</label>
             <input
-              className="block w-full rounded-lg border-gray-300 bg-white px-3.5 py-2.5 shadow-sm outline-none ring-0 transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-black dark:placeholder:text-gray-500"
+              className="input"
               type="password"
               placeholder="••••••••"
               value={password}
@@ -66,6 +67,7 @@ export default function RegisterPage() {
           >
             Sign up
           </button>
+          <p className="muted text-center">Already have an account? <Link href="/login" className="text-blue-600 hover:underline">Sign in</Link></p>
         </form>
       </div>
     </div>
