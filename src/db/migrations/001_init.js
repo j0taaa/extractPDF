@@ -1,7 +1,9 @@
-import type { Kysely } from "kysely";
-import { sql } from "kysely";
+const { sql } = require("kysely");
 
-export async function up(db: Kysely<any>): Promise<void> {
+/**
+ * @param {import('kysely').Kysely<any>} db
+ */
+async function up(db) {
   await db.schema
     .createTable("users")
     .addColumn("id", "text", (col) => col.primaryKey())
@@ -57,12 +59,17 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn("counter", "bigint", (col) => col.notNull().defaultTo(0))
     .addColumn("transports", "text")
     .execute();
-}
+  }
 
-export async function down(db: Kysely<any>): Promise<void> {
+/**
+ * @param {import('kysely').Kysely<any>} db
+ */
+async function down(db) {
   await db.schema.dropTable("authenticators").execute();
   await db.schema.dropTable("verification_tokens").execute();
   await db.schema.dropTable("user_keys").execute();
   await db.schema.dropTable("sessions").execute();
   await db.schema.dropTable("users").execute();
 }
+
+module.exports = { up, down };
