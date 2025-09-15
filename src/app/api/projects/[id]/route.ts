@@ -9,7 +9,17 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const db = getDb() as any;
   const row = await db
     .selectFrom("project")
-    .select(["id", "name", "description", "ownerId", "createdAt", "updatedAt"])
+    .select([
+      "id",
+      "name",
+      "description",
+      "fileType",
+      "instructionSet",
+      "customPrompt",
+      "ownerId",
+      "createdAt",
+      "updatedAt"
+    ])
     .where("id", "=", id)
     .where("ownerId", "=", userId)
     .executeTakeFirst();
