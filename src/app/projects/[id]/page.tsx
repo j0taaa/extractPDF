@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 
-function resolveBaseUrl() {
+async function resolveBaseUrl() {
   if (process.env.NEXT_PUBLIC_BASE_URL) {
     return process.env.NEXT_PUBLIC_BASE_URL;
   }
 
-  const headersList = headers();
+  const headersList = await headers();
   const host = headersList.get("host");
   if (!host) {
     return null;
@@ -30,7 +30,7 @@ async function fetchProject(baseUrl: string, id: string) {
 
 export default async function ProjectPage({ params }: { params: { id: string } }) {
   const { id } = params;
-  const baseUrl = resolveBaseUrl();
+  const baseUrl = await resolveBaseUrl();
   const project = baseUrl ? await fetchProject(baseUrl, id) : null;
   return (
     <div className="mx-auto max-w-3xl space-y-8">
