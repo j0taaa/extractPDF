@@ -10,8 +10,8 @@ A running list of the major capabilities planned for extractPDF.
 - [x] Allow custom, user-defined prompts for bespoke analyses.
 
 ## Processing Flow
-- [ ] Support executing prompts on a per-page basis and aggregating results into JSON arrays.
-- [ ] Support secondary aggregation passes that combine page-level insights via an additional LLM call.
+- [x] Support executing prompts on a per-page basis and aggregating results into JSON arrays.
+- [x] Support secondary aggregation passes that combine page-level insights via an additional LLM call.
 
 ## User Interface
 - [x] Let project creators choose the file type (PDF or image) and applicable instruction set.

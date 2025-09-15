@@ -23,12 +23,12 @@ export type InstructionSetId =
   | "form_field_extraction"
   | "signature_detection";
 
-type InstructionField = {
+export type InstructionField = {
   name: string;
   description: string;
 };
 
-type InstructionSet = {
+export type InstructionSet = {
   id: InstructionSetId;
   name: string;
   summary: string;
