@@ -1,14 +1,37 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 
-async function fetchProject(id: string) {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/projects/${id}`, { cache: "no-store" });
-  if (!res.ok) return null;
-  return res.json();
+async function resolveBaseUrl(): Promise<string | null> {
+  if (process.env.NEXT_PUBLIC_BASE_URL) {
+    return process.env.NEXT_PUBLIC_BASE_URL;
+  }
+
+  const headersList = await headers();
+  const host = headersList.get("host");
+  if (!host) {
+    return null;
+  }
+
+  const protocol = headersList.get("x-forwarded-proto") ?? "http";
+  return `${protocol}://${host}`;
+}
+
+async function fetchProject(baseUrl: string, id: string) {
+  try {
+    const url = new URL(`/api/projects/${id}`, baseUrl);
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return null;
+    return res.json();
+  } catch (error) {
+    console.error(`Failed to fetch project ${id}`, error);
+    return null;
+  }
 }
 
 export default async function ProjectPage({ params }: { params: { id: string } }) {
   const { id } = params;
-  const project = await fetchProject(id);
+  const baseUrl = await resolveBaseUrl();
+  const project = baseUrl ? await fetchProject(baseUrl, id) : null;
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div className="flex items-center justify-between">
