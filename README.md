@@ -4,7 +4,10 @@ A Next.js application that will power a PDF analysis platform. The project curre
 
 ## Getting Started
 
-1. Copy `.env.example` to `.env` and adjust the values.
+1. Copy `.env.example` to `.env` and adjust the values. Add your OpenRouter API key to the root-level `.env` file so the LLM client can authenticate:
+   ```bash
+   OPENROUTER_API_KEY=your_openrouter_key_here
+   ```
 2. Start a PostgreSQL database (e.g. `docker compose up db`).
 3. Install dependencies:
    ```bash
