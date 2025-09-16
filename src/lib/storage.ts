@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "fs/promises";
 import { randomBytes } from "crypto";
 import path from "path";
 
@@ -35,4 +35,47 @@ export async function persistProjectFile(
   await writeFile(absolutePath, Buffer.from(arrayBuffer));
 
   return { relativePath, absolutePath };
+}
+
+function resolveStoredFilePath(relativePath: string): string | null {
+  const root = getStorageRoot();
+  const normalizedRoot = path.resolve(root);
+  const absolutePath = path.resolve(root, relativePath);
+  const relative = path.relative(normalizedRoot, absolutePath);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    return null;
+  }
+  return absolutePath;
+}
+
+export async function readStoredFile(relativePath: string): Promise<Buffer | null> {
+  const absolutePath = resolveStoredFilePath(relativePath);
+  if (!absolutePath) {
+    return null;
+  }
+
+  try {
+    return await readFile(absolutePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function removeStoredFile(relativePath: string): Promise<void> {
+  const absolutePath = resolveStoredFilePath(relativePath);
+  if (!absolutePath) {
+    return;
+  }
+
+  try {
+    await unlink(absolutePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
+      return;
+    }
+    throw error;
+  }
 }

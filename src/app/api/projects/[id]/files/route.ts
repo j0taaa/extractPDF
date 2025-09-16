@@ -3,6 +3,8 @@ import { NextRequest } from "next/server";
 import { getDb } from "@/db/client";
 import { getCurrentUserId } from "@/lib/auth";
 import { persistProjectFile } from "@/lib/storage";
+import { validateFileForProjectType } from "@/lib/files";
+import type { FileType } from "@/lib/instruction-sets";
 
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB per upload
 
@@ -11,6 +13,7 @@ type Params = { params: Promise<{ id: string }> };
 type ProjectRow = {
   id: string;
   ownerId: string;
+  fileType: FileType;
 };
 
 type ProjectFileRow = {
@@ -44,7 +47,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
   const db = getDb() as any;
   const project = (await db
     .selectFrom("project")
-    .select(["id", "ownerId"])
+    .select(["id", "ownerId", "fileType"])
     .where("id", "=", id)
     .executeTakeFirst()) as ProjectRow | undefined;
 
@@ -70,7 +73,7 @@ export async function POST(request: NextRequest, { params }: Params) {
   const db = getDb() as any;
   const project = (await db
     .selectFrom("project")
-    .select(["id", "ownerId"])
+    .select(["id", "ownerId", "fileType"])
     .where("id", "=", id)
     .executeTakeFirst()) as ProjectRow | undefined;
 
@@ -87,6 +90,11 @@ export async function POST(request: NextRequest, { params }: Params) {
   const upload = file as File;
   if (upload.size > MAX_FILE_SIZE_BYTES) {
     return Response.json({ error: "File exceeds size limit" }, { status: 413 });
+  }
+
+  const validation = validateFileForProjectType(upload.name, upload.type, project.fileType);
+  if (!validation.ok) {
+    return Response.json({ error: validation.message }, { status: 415 });
   }
 
   const { relativePath } = await persistProjectFile(project.id, upload);

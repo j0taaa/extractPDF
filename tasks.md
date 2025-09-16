@@ -33,6 +33,6 @@ Focus first on the OpenRouter integration items below—these unblock every othe
 - [x] Enable direct uploads of files into a project.
 - [x] Enable optional API-based ingestion that can be toggled per project.
 - [x] Revisit file storage so uploads can be stored outside the application server if needed.
-- [ ] Allow project owners to delete uploaded files and remove the binaries from storage.
-- [ ] Provide download links or previews so users can review uploaded files without leaving the app.
-- [ ] Validate uploaded file types against each project's configured type and surface friendly errors.
+- [x] Allow project owners to delete uploaded files and remove the binaries from storage.
+- [x] Provide download links or previews so users can review uploaded files without leaving the app.
+- [x] Validate uploaded file types against each project's configured type and surface friendly errors.
