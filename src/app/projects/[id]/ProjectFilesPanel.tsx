@@ -35,6 +35,7 @@ export function ProjectFilesPanel({ projectId, initialFiles }: Props) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [status, setStatus] = useState<"idle" | "uploading">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const hasFiles = useMemo(() => files.length > 0, [files]);
 
@@ -74,6 +75,35 @@ export function ProjectFilesPanel({ projectId, initialFiles }: Props) {
     }
   };
 
+  const handleDelete = async (fileId: string) => {
+    if (deletingId) return;
+    const confirmed = typeof window !== "undefined" ? window.confirm("Remove this file from the project?") : true;
+    if (!confirmed) return;
+
+    setDeletingId(fileId);
+    setError(null);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/files/${fileId}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        const message =
+          payload && typeof (payload as any).error === "string"
+            ? (payload as any).error
+            : "Failed to delete file";
+        throw new Error(message);
+      }
+
+      setFiles((previous) => previous.filter((file) => file.id !== fileId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete file");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="card space-y-5">
       <div>
@@ -107,8 +137,9 @@ export function ProjectFilesPanel({ projectId, initialFiles }: Props) {
             {status === "uploading" ? "Uploading..." : "Upload file"}
           </button>
         </div>
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
       </form>
+
+      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
 
       <div>
         <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Uploaded files</h3>
@@ -132,6 +163,30 @@ export function ProjectFilesPanel({ projectId, initialFiles }: Props) {
                       Direct upload
                     </span>
                   )}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2 text-sm">
+                  <a
+                    href={`/api/projects/${projectId}/files/${file.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-sm btn-outline"
+                  >
+                    Open
+                  </a>
+                  <a
+                    href={`/api/projects/${projectId}/files/${file.id}?download=1`}
+                    className="btn btn-sm btn-secondary"
+                  >
+                    Download
+                  </a>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline text-red-600 hover:text-red-700 dark:text-red-300 dark:hover:text-red-200"
+                    onClick={() => handleDelete(file.id)}
+                    disabled={deletingId === file.id}
+                  >
+                    {deletingId === file.id ? "Removing..." : "Delete"}
+                  </button>
                 </div>
               </li>
             ))}
