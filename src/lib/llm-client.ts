@@ -16,10 +16,18 @@ export type LlmCompletionOptions = {
   responseFormat?: "json" | "text";
 };
 
+export type LlmUsage = {
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+  totalCostUsd?: number;
+};
+
 export type LlmCompletionSuccess = {
   success: true;
   output: string;
   raw?: unknown;
+  usage?: LlmUsage;
 };
 
 export type LlmCompletionFailure = {
@@ -63,6 +71,49 @@ function sanitizeHeaders(headers: Record<string, string | undefined>): Record<st
   );
 
   return Object.fromEntries(sanitizedEntries);
+}
+
+function toNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim().length) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
+function extractUsageFromPayload(payload: unknown): LlmUsage | undefined {
+  if (!payload || typeof payload !== "object") {
+    return undefined;
+  }
+
+  const usage = (payload as any).usage;
+  if (!usage || typeof usage !== "object") {
+    return undefined;
+  }
+
+  const promptTokens = toNumber((usage as any).prompt_tokens ?? (usage as any).promptTokens);
+  const completionTokens = toNumber((usage as any).completion_tokens ?? (usage as any).completionTokens);
+  const totalTokens = toNumber((usage as any).total_tokens ?? (usage as any).totalTokens);
+  const totalCostUsd = toNumber((usage as any).total_cost ?? (usage as any).totalCostUsd);
+
+  if (
+    promptTokens === undefined &&
+    completionTokens === undefined &&
+    totalTokens === undefined &&
+    totalCostUsd === undefined
+  ) {
+    return undefined;
+  }
+
+  return {
+    promptTokens,
+    completionTokens,
+    totalTokens,
+    totalCostUsd
+  };
 }
 
 export class OpenRouterClient implements LanguageModel {
@@ -167,10 +218,13 @@ export class OpenRouterClient implements LanguageModel {
       };
     }
 
+    const usage = extractUsageFromPayload(payload);
+
     return {
       success: true,
       output,
-      raw: payload
+      raw: payload,
+      usage
     };
   }
 }
