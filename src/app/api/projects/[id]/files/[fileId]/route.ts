@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { getDb } from "@/db/client";
 import { getCurrentUserId } from "@/lib/auth";
 import { readStoredFile, removeStoredFile } from "@/lib/storage";
+import { cancelRunsForFile } from "@/lib/processing-service";
 
 type Params = { params: Promise<{ id: string; fileId: string }> };
 
@@ -124,6 +125,8 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     console.error("Failed to delete stored file", error);
     return Response.json({ error: "Unable to remove the stored file." }, { status: 500 });
   }
+
+  await cancelRunsForFile(file.id);
 
   await db
     .deleteFrom("projectFile")

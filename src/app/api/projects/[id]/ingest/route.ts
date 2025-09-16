@@ -4,6 +4,8 @@ import { getDb } from "@/db/client";
 import { persistProjectFile } from "@/lib/storage";
 import { validateFileForProjectType } from "@/lib/files";
 import type { FileType } from "@/lib/instruction-sets";
+import { queueProcessingForFile } from "@/lib/processing-service";
+import { enqueueProcessingRun } from "@/lib/processing-queue";
 
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
 
@@ -103,14 +105,32 @@ export async function POST(request: NextRequest, { params }: Params) {
     })
     .executeTakeFirst();
 
-  return Response.json(
-    normalizeFileRow({
+  let processingRunId: string | null = null;
+  try {
+    const run = await queueProcessingForFile({
+      projectId: project.id,
+      fileId,
+      triggeredBy: "api_ingest"
+    });
+    if (run?.runId) {
+      processingRunId = run.runId;
+      enqueueProcessingRun(run.runId);
+    }
+  } catch (error) {
+    console.error("Failed to enqueue processing run", error);
+  }
+
+  const payload = {
+    ...normalizeFileRow({
       id: fileId,
       originalName: upload.name,
       size: upload.size,
       contentType: upload.type || null,
       uploadedViaApi: true,
       createdAt: new Date()
-    })
-  );
+    }),
+    processingRunId
+  };
+
+  return Response.json(payload);
 }

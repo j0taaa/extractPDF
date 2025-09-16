@@ -2,6 +2,7 @@ import type { InstructionField, InstructionSet } from "@/lib/instruction-sets";
 import {
   type ChatMessage,
   type LanguageModel,
+  type LlmUsage,
   OpenRouterClient,
   describeFieldsForPrompt
 } from "@/lib/llm-client";
@@ -19,6 +20,8 @@ export type PagePromptResult<TRecord = Record<string, unknown>> = {
   rawResponse: string | null;
   error?: string | null;
   warnings?: string[];
+  statusCode?: number;
+  tokenUsage?: LlmUsage;
 };
 
 export type PageProcessingResult<TRecord = Record<string, unknown>> = {
@@ -49,6 +52,7 @@ export type SecondaryAggregationResult<TOutput = Record<string, unknown>> = {
   output: TOutput | null;
   rawResponse: string | null;
   error?: string | null;
+  tokenUsage?: LlmUsage;
 };
 
 export async function runPageLevelPrompts<TRecord = Record<string, unknown>>(
@@ -76,7 +80,8 @@ export async function runPageLevelPrompts<TRecord = Record<string, unknown>>(
         pageNumber: page.pageNumber,
         entries: [],
         rawResponse: null,
-        error: completion.error
+        error: completion.error,
+        statusCode: completion.status
       });
       continue;
     }
@@ -88,7 +93,8 @@ export async function runPageLevelPrompts<TRecord = Record<string, unknown>>(
         entries: [],
         rawResponse: completion.output,
         error: parsed.error,
-        warnings: parsed.warnings
+        warnings: parsed.warnings,
+        tokenUsage: completion.usage
       });
       continue;
     }
@@ -98,7 +104,8 @@ export async function runPageLevelPrompts<TRecord = Record<string, unknown>>(
       pageNumber: page.pageNumber,
       entries: parsed.records,
       rawResponse: completion.output,
-      warnings: parsed.warnings.length ? parsed.warnings : undefined
+      warnings: parsed.warnings.length ? parsed.warnings : undefined,
+      tokenUsage: completion.usage
     });
   }
 
@@ -141,13 +148,15 @@ export async function runSecondaryAggregation<TRecord = Record<string, unknown>,
     return {
       output: null,
       rawResponse: completion.output,
-      error: parsed.error
+      error: parsed.error,
+      tokenUsage: completion.usage
     };
   }
 
   return {
     output: parsed.value,
-    rawResponse: completion.output
+    rawResponse: completion.output,
+    tokenUsage: completion.usage
   };
 }
 

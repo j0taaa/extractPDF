@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import { getDb } from "@/db/client";
 import { getCurrentUserId } from "@/lib/auth";
 import { FILE_TYPES, getInstructionSet } from "@/lib/instruction-sets";
+import { listRunsForProject } from "@/lib/processing-service";
 import { ProjectFilesPanel } from "./ProjectFilesPanel";
 import { ProjectIngestionSettings } from "./ProjectIngestionSettings";
+import { ProjectProcessingRunsPanel } from "./ProjectProcessingRunsPanel";
 
 type ProjectRecord = {
   id: string;
@@ -101,6 +103,23 @@ export default async function ProjectPage({ params }: { params: { id: string } }
     };
   });
 
+  const processingRuns = await listRunsForProject(project.id, 20);
+  const processingSummary = processingRuns.reduce(
+    (acc, run) => {
+      if (typeof run.usageSummary?.totalTokens === "number") {
+        acc.totalTokens += run.usageSummary.totalTokens;
+      }
+      if (typeof run.usageSummary?.totalCostUsd === "number") {
+        acc.totalCostUsd += run.usageSummary.totalCostUsd;
+      }
+      if (run.status === "pending" || run.status === "running") {
+        acc.active += 1;
+      }
+      return acc;
+    },
+    { totalTokens: 0, totalCostUsd: 0, active: 0 }
+  );
+
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div className="flex items-center justify-between">
@@ -149,6 +168,12 @@ export default async function ProjectPage({ params }: { params: { id: string } }
       />
 
       <ProjectFilesPanel projectId={project.id} initialFiles={files} />
+
+      <ProjectProcessingRunsPanel
+        projectId={project.id}
+        initialRuns={processingRuns}
+        initialSummary={processingSummary}
+      />
 
       {instructionSet ? (
         <div className="card space-y-6">
