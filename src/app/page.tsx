@@ -18,7 +18,7 @@ export default function Home() {
             Transform PDFs into structured knowledge. Upload, analyze, and extract insights with a beautiful, fast, and privacy-first experience.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <Link href="/register" className="btn btn-lg btn-primary">Get started</Link>
+            <Link href="/register" className="btn btn-lg btn-primary text-white">Get started</Link>
             <Link href="/login" className="btn btn-lg btn-secondary">Sign in</Link>
             <Link href="/dashboard" className="btn btn-lg btn-ghost">Dashboard</Link>
           </div>
@@ -130,7 +130,7 @@ export default function Home() {
           <h3 className="text-2xl font-semibold">Start extracting insights today</h3>
           <p className="mt-2 opacity-90">Join in minutes. Your first project is free.</p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/register" className="btn btn-lg bg-white text-blue-700 hover:bg-white/90">Create free account</Link>
+            <Link href="/register" className="btn btn-lg bg-white text-black hover:bg-white/90">Create free account</Link>
             <Link href="/dashboard" className="btn btn-lg border border-white/30 bg-white/10 text-white hover:bg-white/15">Explore dashboard</Link>
           </div>
         </div>
