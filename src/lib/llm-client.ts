@@ -54,10 +54,15 @@ function extractMessageContent(message: any): string {
   return "";
 }
 
-function sanitizeHeaders(headers: Record<string, string | undefined>) {
-  return Object.fromEntries(
-    Object.entries(headers).filter(([, value]) => typeof value === "string" && value.trim().length > 0)
+function sanitizeHeaders(headers: Record<string, string | undefined>): Record<string, string> {
+  const sanitizedEntries = Object.entries(headers).filter(
+    (entry): entry is [string, string] => {
+      const [, value] = entry;
+      return typeof value === "string" && value.trim().length > 0;
+    }
   );
+
+  return Object.fromEntries(sanitizedEntries);
 }
 
 export class OpenRouterClient implements LanguageModel {
