@@ -1,5 +1,6 @@
 import { generateId } from "better-auth";
 import { sql } from "kysely";
+import { createRequire } from "module";
 
 import { getDb } from "@/db/client";
 import { DEFAULT_OPENROUTER_MODEL } from "@/lib/llm-client";
@@ -93,12 +94,17 @@ type DocumentLoadResult = {
 
 type PdfParseFn = typeof import("pdf-parse");
 
+const requireModule = createRequire(import.meta.url);
+
 let pdfParser: PdfParseFn | null = null;
 
 async function getPdfParser(): Promise<PdfParseFn> {
   if (!pdfParser) {
-    const mod = await import("pdf-parse");
+    const mod = requireModule("pdf-parse") as unknown;
     const maybeFn: unknown = (mod as any).default ?? mod;
+    if (typeof maybeFn !== "function") {
+      throw new Error("Failed to load pdf-parse module");
+    }
     pdfParser = maybeFn as PdfParseFn;
   }
   return pdfParser!;
