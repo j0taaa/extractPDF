@@ -40,6 +40,7 @@ export function ProjectFilesPanel({ projectId, initialFiles }: Props) {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const form = event.currentTarget;
     if (!selectedFile || status === "uploading") return;
 
     setStatus("uploading");
@@ -62,7 +63,7 @@ export function ProjectFilesPanel({ projectId, initialFiles }: Props) {
       const uploaded = payload as ProjectFile;
       setFiles((previous) => [uploaded, ...previous]);
       setSelectedFile(null);
-      const input = event.currentTarget.elements.namedItem("file") as HTMLInputElement | null;
+      const input = form.elements.namedItem("file") as HTMLInputElement | null;
       if (input) {
         input.value = "";
       }
