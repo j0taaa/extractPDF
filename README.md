@@ -52,4 +52,4 @@ The user interface changes based on the chosen instruction set. For example, pro
 
 ## File Intake and API Access
 
-Every project can accept files uploaded directly in the application and, when enabled through the project configuration, through an API endpoint. Files are currently persisted on the server, though alternative storage backends may be introduced later.
+Project pages now include a direct upload panel so PDFs and images can be attached without leaving the app. Teams that need system-to-system ingestion can enable an API toggle per project to generate a bearer token and receive files via `POST /api/projects/:id/ingest`. Uploaded binaries are written to the directory defined by the optional `FILE_STORAGE_ROOT` environment variable (defaulting to `./uploads`), allowing deployments to target shared or external storage volumes when desired.

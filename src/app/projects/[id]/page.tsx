@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { getDb } from "@/db/client";
 import { getCurrentUserId } from "@/lib/auth";
 import { FILE_TYPES, getInstructionSet } from "@/lib/instruction-sets";
+import { ProjectFilesPanel } from "./ProjectFilesPanel";
+import { ProjectIngestionSettings } from "./ProjectIngestionSettings";
 
 type ProjectRecord = {
   id: string;
@@ -11,6 +13,17 @@ type ProjectRecord = {
   fileType: string;
   instructionSet: string | null;
   customPrompt: string | null;
+  apiIngestionEnabled: boolean;
+  apiToken: string | null;
+};
+
+type ProjectFileRecord = {
+  id: string;
+  originalName: string;
+  size: string | number;
+  contentType: string | null;
+  uploadedViaApi: boolean;
+  createdAt: Date | string;
 };
 
 export default async function ProjectPage({ params }: { params: { id: string } }) {
@@ -43,7 +56,16 @@ export default async function ProjectPage({ params }: { params: { id: string } }
   const db = getDb() as any;
   const project = (await db
     .selectFrom("project")
-    .select(["id", "name", "description", "fileType", "instructionSet", "customPrompt"])
+    .select([
+      "id",
+      "name",
+      "description",
+      "fileType",
+      "instructionSet",
+      "customPrompt",
+      "apiIngestionEnabled",
+      "apiToken"
+    ])
     .where("id", "=", id)
     .where("ownerId", "=", userId)
     .executeTakeFirst()) as ProjectRecord | undefined;
@@ -54,6 +76,30 @@ export default async function ProjectPage({ params }: { params: { id: string } }
 
   const fileType = FILE_TYPES.find((type) => type.id === project.fileType);
   const instructionSet = getInstructionSet(project.instructionSet);
+  const projectFiles = (await db
+    .selectFrom("projectFile")
+    .select(["id", "originalName", "size", "contentType", "uploadedViaApi", "createdAt"])
+    .where("projectId", "=", project.id)
+    .orderBy("createdAt", "desc")
+    .execute()) as ProjectFileRecord[];
+
+  const files = projectFiles.map((file) => {
+    const rawSize = typeof file.size === "string" ? Number(file.size) : file.size;
+    const normalizedSize = Number.isFinite(rawSize) ? rawSize : 0;
+    const timestamp =
+      file.createdAt instanceof Date
+        ? file.createdAt.toISOString()
+        : new Date(file.createdAt).toISOString();
+
+    return {
+      id: file.id,
+      originalName: file.originalName,
+      size: normalizedSize,
+      contentType: file.contentType,
+      uploadedViaApi: file.uploadedViaApi,
+      createdAt: timestamp
+    };
+  });
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -95,6 +141,14 @@ export default async function ProjectPage({ params }: { params: { id: string } }
           </div>
         ) : null}
       </div>
+
+      <ProjectIngestionSettings
+        projectId={project.id}
+        initialEnabled={project.apiIngestionEnabled}
+        initialToken={project.apiToken}
+      />
+
+      <ProjectFilesPanel projectId={project.id} initialFiles={files} />
 
       {instructionSet ? (
         <div className="card space-y-6">
