@@ -181,12 +181,14 @@ function buildPageMessages(params: {
 
   const textContent = page.textContent?.trim().length ? page.textContent : "No text content was provided for this page.";
 
+  const textBlockDelimiter = "```";
+
   const userContentParts = [
     `Document page number: ${page.pageNumber}.`,
     "Extracted text content:",
-    """,
+    textBlockDelimiter,
     textContent,
-    """"
+    textBlockDelimiter
   ];
 
   if (page.images?.length) {
@@ -228,11 +230,12 @@ function buildAggregationMessages<TRecord>(
   }
 
   const serializedRecords = JSON.stringify(options.aggregatedRecords, null, 2);
+  const textBlockDelimiter = "```";
   const userContent = [
     "Here are the page-level records you must combine:",
-    """,
+    textBlockDelimiter,
     serializedRecords,
-    """",
+    textBlockDelimiter,
     "Use the records to fulfill the aggregation request."
   ].join("\n");
 
