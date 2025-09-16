@@ -5,13 +5,14 @@ A running list of the major capabilities planned for extractPDF.
 Focus first on the OpenRouter integration items below—these unblock every other downstream workflow.
 
 ## LLM Processing with OpenRouter
-- [ ] Surface OpenRouter API configuration in the dashboard, including project-level model selection and credential management.
+- [ ] Setup OpenRouter API with Gemini 2.5 Flash. The API key will be provided in .env
 - [ ] Build a server-side OpenRouter client that composes prompts from instruction sets and dispatches document/page jobs.
 - [ ] Queue and orchestrate LLM calls so large documents process asynchronously with retries, backoff, and concurrency controls.
 - [ ] Persist raw LLM responses, extracted insights, and token/cost telemetry for each processing run.
 - [ ] Wire the processing pipeline into OCR and extraction outputs so every uploaded document can be sent to OpenRouter automatically.
 - [ ] Provide UI affordances to trigger processing, monitor job status, and review LLM results per document and page.
 - [ ] Implement guardrails for usage limits, error reporting, and developer-visible logs around OpenRouter requests.
+- [ ] Keep track of usage of LLM tokens to analyze documents and display in user's page 
 
 ## Instruction Sets
 - [x] Provide an instruction set that performs OCR on all text within each file.
