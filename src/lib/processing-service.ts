@@ -16,6 +16,8 @@ import {
 } from "@/lib/page-processing";
 import { renderPdfToImages } from "@/lib/pdf-renderer";
 import { readStoredFile } from "@/lib/storage";
+import { DEFAULT_TOKEN_SAFETY_LIMIT, parseTokenSafetyLimit } from "@/lib/token-limit";
+import { getDefaultTokenSafetyLimit } from "@/lib/server-token-limit";
 import type { AggregatedFolderNode, ProcessingProgressSnapshot, ProcessingRunStatus } from "./processing-types";
 
 type ProjectRow = {
@@ -24,6 +26,7 @@ type ProjectRow = {
   instructionSet: string | null;
   customPrompt: string | null;
   fileType: string;
+  tokenSafetyLimit: string | number | bigint | null;
 };
 
 type ProjectFileRow = {
@@ -172,10 +175,7 @@ const MAX_PAGES_PER_RUN = Math.max(
   Number.parseInt(process.env.OPENROUTER_MAX_PAGES_PER_RUN ?? "40", 10)
 );
 
-const MAX_APPROX_TOKENS_PER_RUN = Math.max(
-  1000,
-  Number.parseInt(process.env.OPENROUTER_MAX_TOKENS_PER_RUN ?? "60000", 10)
-);
+const SERVER_DEFAULT_TOKEN_LIMIT = getDefaultTokenSafetyLimit();
 
 const MAX_TEXT_PER_PAGE = Math.max(
   500,
@@ -189,7 +189,7 @@ export async function queueProcessingForFile(options: CreateRunOptions): Promise
 
   const project = (await db
     .selectFrom("project")
-    .select(["id", "ownerId", "instructionSet", "customPrompt", "fileType"])
+    .select(["id", "ownerId", "instructionSet", "customPrompt", "fileType", "tokenSafetyLimit"])
     .where("id", "=", options.projectId)
     .executeTakeFirst()) as ProjectRow | undefined;
 
@@ -635,13 +635,15 @@ export async function processRun(runId: string, attempt: number): Promise<void> 
 
   const project = (await db
     .selectFrom("project")
-    .select(["id", "ownerId", "instructionSet", "customPrompt", "fileType"])
+    .select(["id", "ownerId", "instructionSet", "customPrompt", "fileType", "tokenSafetyLimit"])
     .where("id", "=", run.projectId)
     .executeTakeFirst()) as ProjectRow | undefined;
 
   if (!project) {
     throw new ProcessingRunError("Project was removed before processing could complete", { retryable: false });
   }
+
+  const projectTokenLimit = parseTokenSafetyLimit(project.tokenSafetyLimit, SERVER_DEFAULT_TOKEN_LIMIT);
 
   const file = (await db
     .selectFrom("projectFile")
@@ -661,7 +663,10 @@ export async function processRun(runId: string, attempt: number): Promise<void> 
     statusUpdates.startedAt = sql`now()`;
   }
   await updateRunStatus(runId, "running", statusUpdates);
-  await logRunEvent(runId, "info", "Processing attempt started", { attempt });
+  await logRunEvent(runId, "info", "Processing attempt started", {
+    attempt,
+    tokenLimit: projectTokenLimit
+  });
 
   try {
     const loadResult = await loadDocumentPages(file, project);
@@ -675,9 +680,9 @@ export async function processRun(runId: string, attempt: number): Promise<void> 
       0
     );
 
-    if (tokenEstimate > MAX_APPROX_TOKENS_PER_RUN) {
+    if (tokenEstimate > projectTokenLimit) {
       const message =
-        `Estimated token usage (${tokenEstimate}) exceeds the safety limit of ${MAX_APPROX_TOKENS_PER_RUN}. ` +
+        `Estimated token usage (${tokenEstimate}) exceeds the safety limit of ${projectTokenLimit}. ` +
         "Reduce the document size or adjust the limit before retrying.";
       await logRunEvent(runId, "warn", message);
       await updateRunStatus(runId, "failed", {

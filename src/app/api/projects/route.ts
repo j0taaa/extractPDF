@@ -1,6 +1,7 @@
 import { getDb } from "@/db/client";
 import { generateId } from "better-auth";
 import { getCurrentUserId } from "@/lib/auth";
+import { getDefaultTokenSafetyLimit } from "@/lib/server-token-limit";
 import {
   DEFAULT_INSTRUCTION_SET_ID,
   FILE_TYPES,
@@ -49,7 +50,8 @@ export async function POST(request: Request) {
       description,
       fileType,
       instructionSet,
-      customPrompt: customPrompt || null
+      customPrompt: customPrompt || null,
+      tokenSafetyLimit: getDefaultTokenSafetyLimit()
     })
     .executeTakeFirst();
   return Response.json({ id, name, description, fileType, instructionSet, customPrompt });
