@@ -231,7 +231,7 @@ export function ProjectProcessingRunsPanel({ projectId, initialRuns, initialSumm
   const activeLabel = hasActiveRuns ? `${summary.active} active` : "No active runs";
 
   return (
-    <div className="card space-y-5">
+    <div className="card space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-xl font-semibold">Processing runs</h2>
@@ -252,8 +252,8 @@ export function ProjectProcessingRunsPanel({ projectId, initialRuns, initialSumm
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        <div className="space-y-4">
+      <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
+        <div className="space-y-6">
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-900">
             <p className="font-medium text-gray-900 dark:text-gray-100">Usage summary</p>
             <div className="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-400">
@@ -317,7 +317,7 @@ export function ProjectProcessingRunsPanel({ projectId, initialRuns, initialSumm
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           {selectedRunId ? (
             <RunDetailView
               runId={selectedRunId}
@@ -374,16 +374,18 @@ function RunDetailView({
   const { run, file, pages, events } = detail;
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+    <div className="space-y-6">
+      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Run {run.id}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Instruction set: {run.instructionSet ?? "Custom"}</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Run {run.id}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Instruction set: {run.instructionSet ?? "Custom"}
+            </p>
           </div>
           <StatusBadge status={run.status} />
         </div>
-        <div className="mt-3 grid gap-3 text-xs text-gray-600 dark:text-gray-400 md:grid-cols-2">
+        <div className="mt-4 grid gap-3 text-xs text-gray-600 dark:text-gray-400 md:grid-cols-2">
           <p>Model: {run.model ?? "Default"}</p>
           <p>Temperature: {run.temperature ?? "—"}</p>
           <p>Created: {formatDate(run.createdAt)}</p>
@@ -392,13 +394,14 @@ function RunDetailView({
           <p>Attempts: {run.attempts}</p>
         </div>
         {file ? (
-          <div className="mt-3 rounded-md bg-gray-50 p-3 text-xs text-gray-600 dark:bg-gray-900 dark:text-gray-300">
-            <p className="font-medium text-gray-800 dark:text-gray-200">{file.originalName ?? file.id}</p>
-            <p className="mt-1 flex flex-wrap gap-4">
+          <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-300">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Source file</p>
+            <p className="mt-1 font-medium text-gray-900 dark:text-gray-100">{file.originalName ?? file.id}</p>
+            <div className="mt-2 flex flex-wrap gap-4">
               <span>Size: {formatBytes(file.size)}</span>
               <span>Type: {file.contentType ?? "Unknown"}</span>
               <span>Uploaded: {formatDate(file.createdAt)}</span>
-            </p>
+            </div>
           </div>
         ) : null}
         {run.error ? (
@@ -412,38 +415,51 @@ function RunDetailView({
           </ul>
         ) : null}
         {run.customPrompt ? (
-          <details className="mt-3 text-xs">
-            <summary className="cursor-pointer text-gray-700 dark:text-gray-300">Custom prompt</summary>
-            <pre className="mt-2 max-h-40 overflow-auto rounded bg-gray-100 p-3 text-[11px] text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+          <details className="mt-4 text-xs">
+            <summary className="cursor-pointer font-semibold text-gray-700 dark:text-gray-200">Custom prompt</summary>
+            <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words rounded bg-gray-100 p-3 text-[11px] text-gray-800 dark:bg-gray-800 dark:text-gray-200">
               {run.customPrompt}
             </pre>
           </details>
         ) : null}
         {run.usageSummary ? (
-          <div className="mt-3 grid gap-3 rounded-md bg-gray-50 p-3 text-xs text-gray-600 dark:bg-gray-900 dark:text-gray-300 md:grid-cols-2">
+          <div className="mt-4 grid gap-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-300 md:grid-cols-2">
             <p>Total tokens: {formatTokens(run.usageSummary?.totalTokens)}</p>
             <p>Total cost (USD): {formatCost(run.usageSummary?.totalCostUsd)}</p>
             <p>Prompt tokens: {formatTokens(run.usageSummary?.promptTokens)}</p>
             <p>Completion tokens: {formatTokens(run.usageSummary?.completionTokens)}</p>
           </div>
         ) : null}
-      </div>
+      </section>
 
       {run.aggregatedOutput ? (
-        <div className="rounded-lg border border-gray-200 p-4 text-sm dark:border-gray-700">
-          <p className="font-medium text-gray-900 dark:text-gray-100">Aggregated output</p>
-          <pre className="mt-2 max-h-64 overflow-auto rounded bg-gray-100 p-3 text-xs text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+        <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Aggregated output</p>
+            <span className="text-xs text-gray-500 dark:text-gray-400">Combined structured result</span>
+          </div>
+          <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words rounded bg-gray-100 p-3 text-xs text-gray-800 dark:bg-gray-800 dark:text-gray-200">
             {stringify(run.aggregatedOutput)}
           </pre>
-        </div>
+        </section>
       ) : null}
 
-      <div className="space-y-3">
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Page results</p>
+      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Page results</p>
+          {pages.length ? (
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {pages.length} page{pages.length === 1 ? "" : "s"} processed
+            </span>
+          ) : null}
+        </div>
         {pages.length ? (
-          <div className="space-y-3">
+          <div className="mt-4 space-y-4">
             {pages.map((page) => (
-              <div key={page.id} className="rounded-lg border border-gray-200 p-4 text-sm dark:border-gray-700">
+              <article
+                key={page.id}
+                className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-900/60"
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-medium text-gray-900 dark:text-gray-100">Page {page.pageNumber}</p>
                   <StatusBadge status={page.status} />
@@ -463,48 +479,61 @@ function RunDetailView({
                   </ul>
                 ) : null}
                 {page.entries.length ? (
-                  <details className="mt-3">
-                    <summary className="cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300">
-                      View structured entries
+                  <details className="mt-3 rounded-lg border border-gray-200 bg-white p-3 text-xs dark:border-gray-700 dark:bg-gray-900">
+                    <summary className="flex cursor-pointer items-center justify-between font-semibold text-gray-700 dark:text-gray-200">
+                      Structured entries
+                      <span className="text-[11px] font-normal text-gray-500 dark:text-gray-400">
+                        {page.entries.length} item{page.entries.length === 1 ? "" : "s"}
+                      </span>
                     </summary>
-                    <pre className="mt-2 max-h-60 overflow-auto rounded bg-gray-100 p-3 text-xs text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+                    <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words rounded bg-gray-100 p-3 text-[11px] text-gray-800 dark:bg-gray-800 dark:text-gray-200">
                       {stringify(page.entries)}
                     </pre>
                   </details>
                 ) : null}
                 {page.rawResponse ? (
-                  <details className="mt-3">
-                    <summary className="cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300">
+                  <details className="mt-3 rounded-lg border border-gray-200 bg-white p-3 text-xs dark:border-gray-700 dark:bg-gray-900">
+                    <summary className="flex cursor-pointer items-center justify-between font-semibold text-gray-700 dark:text-gray-200">
                       Raw LLM response
                     </summary>
-                    <pre className="mt-2 max-h-60 overflow-auto rounded bg-gray-100 p-3 text-xs text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+                    <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words rounded bg-gray-100 p-3 text-[11px] text-gray-800 dark:bg-gray-800 dark:text-gray-200">
                       {page.rawResponse}
                     </pre>
                   </details>
                 ) : null}
-              </div>
+              </article>
             ))}
           </div>
         ) : (
-          <p className="rounded-lg border border-dashed border-gray-300 p-4 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+          <p className="mt-3 rounded-lg border border-dashed border-gray-300 p-4 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
             No page-level responses were recorded for this run.
           </p>
         )}
-      </div>
+      </section>
 
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Event log</p>
+      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Event log</p>
+          {events.length ? (
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {events.length} entr{events.length === 1 ? "y" : "ies"}
+            </span>
+          ) : null}
+        </div>
         {events.length ? (
-          <ul className="max-h-64 space-y-2 overflow-y-auto pr-1 text-xs text-gray-600 dark:text-gray-400">
+          <ul className="mt-4 space-y-3 text-xs text-gray-600 dark:text-gray-400">
             {events.map((event) => (
-              <li key={event.id} className="rounded border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900">
+              <li
+                key={event.id}
+                className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/60"
+              >
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium text-gray-800 dark:text-gray-200">{event.level.toUpperCase()}</span>
                   <span>{formatDate(event.createdAt)}</span>
                 </div>
                 <p className="mt-1 text-gray-700 dark:text-gray-200">{event.message}</p>
                 {event.context ? (
-                  <pre className="mt-2 max-h-40 overflow-auto rounded bg-gray-100 p-2 text-[11px] text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+                  <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words rounded bg-gray-100 p-2 text-[11px] text-gray-800 dark:bg-gray-800 dark:text-gray-200">
                     {stringify(event.context)}
                   </pre>
                 ) : null}
@@ -512,11 +541,11 @@ function RunDetailView({
             ))}
           </ul>
         ) : (
-          <p className="rounded border border-dashed border-gray-300 p-4 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+          <p className="mt-3 rounded border border-dashed border-gray-300 p-4 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
             No events recorded for this run.
           </p>
         )}
-      </div>
+      </section>
     </div>
   );
 }
