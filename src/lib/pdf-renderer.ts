@@ -18,35 +18,61 @@ const DEFAULT_PDF_RENDER_SCALE = Math.max(
   Number.parseFloat(process.env.OPENROUTER_PDF_RENDER_SCALE ?? "2") || 2
 );
 
+type CanvasModule = typeof import("@napi-rs/canvas");
+
 let pdfModule: Promise<typeof import("pdfjs-dist/legacy/build/pdf.mjs")> | null = null;
-let canvasModule: Promise<typeof import("@napi-rs/canvas")> | null = null;
+let canvasModule: Promise<CanvasModule> | null = null;
+
+async function getCanvasModule(): Promise<CanvasModule> {
+  if (!canvasModule) {
+    canvasModule = import("@napi-rs/canvas") as Promise<CanvasModule>;
+  }
+  return canvasModule;
+}
+
+function resolveDomMatrix(candidate: unknown): typeof globalThis.DOMMatrix | null {
+  if (!candidate || typeof candidate !== "object") {
+    return null;
+  }
+
+  const domMatrix = (candidate as { DOMMatrix?: unknown }).DOMMatrix;
+  return typeof domMatrix === "function" ? (domMatrix as typeof globalThis.DOMMatrix) : null;
+}
+
+async function ensureDomMatrix(): Promise<void> {
+  if (typeof globalThis.DOMMatrix !== "undefined") {
+    return;
+  }
+
+  const canvasLib = await getCanvasModule();
+  const domMatrixCtor =
+    resolveDomMatrix(canvasLib) ||
+    resolveDomMatrix((canvasLib as { default?: unknown }).default ?? null);
+
+  if (domMatrixCtor) {
+    (globalThis as Record<string, unknown>).DOMMatrix = domMatrixCtor;
+    return;
+  }
+
+  throw new Error("Failed to locate a DOMMatrix implementation from @napi-rs/canvas");
+}
 
 async function getPdfModule() {
   if (!pdfModule) {
-    pdfModule = import("pdfjs-dist/legacy/build/pdf.mjs");
+    pdfModule = (async () => {
+      await ensureDomMatrix();
+      return import("pdfjs-dist/legacy/build/pdf.mjs");
+    })();
   }
   return pdfModule;
-}
-
-async function getCanvasModule() {
-  if (!canvasModule) {
-    canvasModule = import("@napi-rs/canvas");
-  }
-  return canvasModule;
 }
 
 export async function renderPdfToImages(
   buffer: Buffer,
   options: RenderPdfOptions = {}
 ): Promise<{ pages: RenderedPdfPage[]; totalPages: number }> {
-  const [pdfjsLib, canvasModule] = await Promise.all([getPdfModule(), getCanvasModule()]);
-  const canvasLib = canvasModule as typeof import("@napi-rs/canvas");
+  const [pdfjsLib, canvasLib] = await Promise.all([getPdfModule(), getCanvasModule()]);
   const { createCanvas } = canvasLib;
-  const DOMMatrixCtor = (canvasLib as { DOMMatrix?: unknown }).DOMMatrix;
-
-  if (typeof globalThis.DOMMatrix === "undefined" && typeof DOMMatrixCtor === "function") {
-    (globalThis as Record<string, unknown>).DOMMatrix = DOMMatrixCtor as typeof globalThis.DOMMatrix;
-  }
 
   const initOptions: DocumentInitParameters & { disableWorker?: boolean } = {
     data: buffer,
