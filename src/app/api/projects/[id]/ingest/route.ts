@@ -1,11 +1,11 @@
-import { generateId } from "better-auth";
 import { NextRequest } from "next/server";
+
 import { getDb } from "@/db/client";
-import { persistProjectFile } from "@/lib/storage";
-import { validateFileForProjectType } from "@/lib/files";
 import type { FileType } from "@/lib/instruction-sets";
-import { queueProcessingForFile } from "@/lib/processing-service";
-import { enqueueProcessingRun } from "@/lib/processing-queue";
+import {
+  saveProjectUpload,
+  UploadError
+} from "@/lib/project-file-upload";
 
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
 
@@ -17,15 +17,6 @@ type ProjectRow = {
   apiIngestionEnabled: boolean;
   apiToken: string | null;
   fileType: FileType;
-};
-
-type ProjectFileRow = {
-  id: string;
-  originalName: string;
-  size: number;
-  contentType: string | null;
-  uploadedViaApi: boolean;
-  createdAt: Date;
 };
 
 function extractToken(request: NextRequest): string | null {
@@ -41,17 +32,6 @@ function extractToken(request: NextRequest): string | null {
     return headerToken.trim();
   }
   return null;
-}
-
-function normalizeFileRow(row: ProjectFileRow) {
-  return {
-    id: row.id,
-    originalName: row.originalName,
-    size: row.size,
-    contentType: row.contentType,
-    uploadedViaApi: row.uploadedViaApi,
-    createdAt: row.createdAt.toISOString()
-  };
 }
 
 export async function POST(request: NextRequest, { params }: Params) {
@@ -79,58 +59,31 @@ export async function POST(request: NextRequest, { params }: Params) {
   }
 
   const upload = file as File;
-  if (upload.size > MAX_FILE_SIZE_BYTES) {
-    return Response.json({ error: "File exceeds size limit" }, { status: 413 });
-  }
-
-  const validation = validateFileForProjectType(upload.name, upload.type, project.fileType);
-  if (!validation.ok) {
-    return Response.json({ error: validation.message }, { status: 415 });
-  }
-
-  const { relativePath } = await persistProjectFile(project.id, upload);
-
-  const fileId = generateId();
-  await db
-    .insertInto("projectFile")
-    .values({
-      id: fileId,
+  try {
+    const outcome = await saveProjectUpload({
       projectId: project.id,
       ownerId: project.ownerId,
-      originalName: upload.name,
-      storagePath: relativePath,
-      contentType: upload.type || null,
-      size: BigInt(upload.size),
-      uploadedViaApi: true
-    })
-    .executeTakeFirst();
-
-  let processingRunId: string | null = null;
-  try {
-    const run = await queueProcessingForFile({
-      projectId: project.id,
-      fileId,
-      triggeredBy: "api_ingest"
-    });
-    if (run?.runId) {
-      processingRunId = run.runId;
-      enqueueProcessingRun(run.runId);
-    }
-  } catch (error) {
-    console.error("Failed to enqueue processing run", error);
-  }
-
-  const payload = {
-    ...normalizeFileRow({
-      id: fileId,
-      originalName: upload.name,
-      size: upload.size,
-      contentType: upload.type || null,
+      projectType: project.fileType,
+      upload,
       uploadedViaApi: true,
-      createdAt: new Date()
-    }),
-    processingRunId
-  };
+      triggeredBy: "api_ingest",
+      maxFileSizeBytes: MAX_FILE_SIZE_BYTES
+    });
 
-  return Response.json(payload);
+    const primaryRunId = outcome.processingRunIds[0] ?? null;
+
+    return Response.json({
+      file: outcome.files[0] ?? null,
+      files: outcome.files,
+      processingRunId: primaryRunId,
+      processingRunIds: outcome.processingRunIds,
+      warnings: outcome.warnings
+    });
+  } catch (error) {
+    if (error instanceof UploadError) {
+      return Response.json({ error: error.message }, { status: error.status });
+    }
+    console.error("Failed to process API ingestion upload", error);
+    return Response.json({ error: "Upload failed" }, { status: 500 });
+  }
 }

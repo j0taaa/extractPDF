@@ -15,14 +15,7 @@ import {
   type PagePromptResult
 } from "@/lib/page-processing";
 import { readStoredFile } from "@/lib/storage";
-
-export type ProcessingRunStatus =
-  | "pending"
-  | "running"
-  | "succeeded"
-  | "failed"
-  | "completed_with_errors"
-  | "cancelled";
+import type { AggregatedFolderNode, ProcessingProgressSnapshot, ProcessingRunStatus } from "./processing-types";
 
 type ProjectRow = {
   id: string;
@@ -116,6 +109,23 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 function parseJsonObject<T>(value: unknown): T | null {
   const parsed = parseJsonValue<T>(value);
   return isPlainObject(parsed) ? (parsed as T) : null;
+}
+
+function countRecordsFromOutput(value: unknown): number {
+  if (Array.isArray(value)) {
+    return value.length;
+  }
+  if (value && typeof value === "object") {
+    const candidate = value as Record<string, unknown>;
+    if (Array.isArray(candidate.records)) {
+      return candidate.records.length;
+    }
+    if (typeof candidate.recordCount === "number") {
+      const numeric = Number(candidate.recordCount);
+      return Number.isFinite(numeric) ? numeric : 0;
+    }
+  }
+  return 0;
 }
 
 type CreateRunOptions = {
@@ -646,6 +656,167 @@ export async function listRunsForProject(projectId: string, limit = 20) {
     fileName: row.fileName ?? null,
     fileSize: normalizeNumber(row.fileSize)
   }));
+}
+
+export async function getProcessingProgress(projectId: string): Promise<ProcessingProgressSnapshot> {
+  const db = getDb() as any;
+  const totalRow = await db
+    .selectFrom("projectFile")
+    .select(sql<number>`count(*)`.as("total"))
+    .where("projectId", "=", projectId)
+    .executeTakeFirst();
+
+  const statusRow = await db
+    .selectFrom("projectProcessingRun")
+    .select([
+      sql<number>`count(distinct case when status in ('succeeded','completed_with_errors','failed','cancelled') then "fileId" end)`
+        .as("completed"),
+      sql<number>`count(distinct case when status in ('pending','running') then "fileId" end)`.as("active")
+    ])
+    .where("projectId", "=", projectId)
+    .executeTakeFirst();
+
+  const totalFiles = Number(totalRow?.total ?? 0);
+  const completedFiles = Number(statusRow?.completed ?? 0);
+  const activeFiles = Number(statusRow?.active ?? 0);
+
+  return { totalFiles, completedFiles, activeFiles };
+}
+
+function toTimestampValue(value: Date | string | null | undefined): number {
+  if (!value) return 0;
+  if (value instanceof Date) {
+    const time = value.getTime();
+    return Number.isFinite(time) ? time : 0;
+  }
+  const date = new Date(value);
+  const time = date.getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function updateFolderCounts(node: AggregatedFolderNode): number {
+  if (node.type === "file") {
+    return node.recordCount;
+  }
+  if (!node.children || !node.children.length) {
+    node.recordCount = 0;
+    return 0;
+  }
+  node.children.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+  let total = 0;
+  for (const child of node.children) {
+    total += updateFolderCounts(child);
+  }
+  node.recordCount = total;
+  return total;
+}
+
+export async function aggregateResultsByFolder(projectId: string): Promise<AggregatedFolderNode[]> {
+  const db = getDb() as any;
+  const rows = (await db
+    .selectFrom("projectProcessingRun as run")
+    .leftJoin("projectFile as file", "file.id", "run.fileId")
+    .select([
+      "run.id as runId",
+      "run.fileId as fileId",
+      "run.status as status",
+      "run.aggregatedOutput as aggregatedOutput",
+      "run.createdAt as createdAt",
+      "file.originalName as originalName"
+    ])
+    .where("run.projectId", "=", projectId)
+    .orderBy("run.createdAt", "desc")
+    .execute()) as {
+    runId: string;
+    fileId: string | null;
+    status: ProcessingRunStatus;
+    aggregatedOutput: unknown;
+    createdAt: Date | string | null;
+    originalName: string | null;
+  }[];
+
+  if (!rows.length) {
+    return [];
+  }
+
+  type AggregationEntry = {
+    runId: string;
+    status: ProcessingRunStatus;
+    aggregatedOutput: unknown;
+    recordCount: number;
+    segments: string[];
+    createdAtMs: number;
+    path: string;
+  };
+
+  const latestByFile = new Map<string, AggregationEntry>();
+
+  for (const row of rows) {
+    const key = row.fileId ?? row.runId;
+    const createdAtMs = toTimestampValue(row.createdAt);
+    const normalizedName = (row.originalName ?? row.runId).replace(/\\/g, "/").replace(/^\/+/, "");
+    const segments = normalizedName ? normalizedName.split(/\/+|\\+/).filter(Boolean) : [row.runId];
+    const parsed = parseJsonValue<unknown>(row.aggregatedOutput);
+    const entry: AggregationEntry = {
+      runId: row.runId,
+      status: row.status,
+      aggregatedOutput: parsed,
+      recordCount: countRecordsFromOutput(parsed),
+      segments: segments.length ? segments : [row.runId],
+      createdAtMs,
+      path: segments.join("/") || row.runId
+    };
+    const existing = latestByFile.get(key);
+    if (!existing || entry.createdAtMs > existing.createdAtMs) {
+      latestByFile.set(key, entry);
+    }
+  }
+
+  const root: AggregatedFolderNode = {
+    name: "root",
+    path: "",
+    type: "folder",
+    recordCount: 0,
+    children: []
+  };
+
+  for (const entry of latestByFile.values()) {
+    let current = root;
+    entry.segments.forEach((segment, index) => {
+      const isLast = index === entry.segments.length - 1;
+      const path = current.path ? `${current.path}/${segment}` : segment;
+      if (!current.children) {
+        current.children = [];
+      }
+      let child = current.children.find((node) => node.name === segment);
+      if (!child) {
+        child = {
+          name: segment,
+          path,
+          type: isLast ? "file" : "folder",
+          recordCount: 0,
+          children: isLast ? undefined : []
+        } as AggregatedFolderNode;
+        current.children.push(child);
+      }
+      if (isLast) {
+        child.recordCount = entry.recordCount;
+        child.runId = entry.runId;
+        child.status = entry.status;
+        child.records = entry.aggregatedOutput;
+      }
+      current = child;
+    });
+  }
+
+  if (root.children) {
+    for (const child of root.children) {
+      updateFolderCounts(child);
+    }
+    root.children.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+  }
+
+  return root.children ?? [];
 }
 
 export async function getRunDetail(projectId: string, runId: string) {
