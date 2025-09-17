@@ -14,6 +14,7 @@ import {
   runPageLevelPrompts,
   type PagePromptResult
 } from "@/lib/page-processing";
+import { renderPdfToImages } from "@/lib/pdf-renderer";
 import { readStoredFile } from "@/lib/storage";
 import type { AggregatedFolderNode, ProcessingProgressSnapshot, ProcessingRunStatus } from "./processing-types";
 
@@ -304,70 +305,250 @@ function truncateForPrompt(text: string): { value: string; truncated: boolean } 
   };
 }
 
+function estimateTokensForPage(page: DocumentPage): number {
+  let total = approximateTokenCount(page.textContent);
+  if (!page.images?.length) {
+    return total;
+  }
+
+  for (const image of page.images) {
+    if (!image?.data) continue;
+    total += Math.ceil(image.data.length / 4);
+  }
+
+  return total;
+}
+
+function normalizeMimeType(input: string | null | undefined): string | null {
+  if (!input) return null;
+  const [value] = input.split(";");
+  const trimmed = value?.trim().toLowerCase();
+  return trimmed?.length ? trimmed : null;
+}
+
+function sniffImageMimeType(buffer: Buffer): string | null {
+  if (buffer.length >= 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+    return "image/png";
+  }
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return "image/jpeg";
+  }
+  if (buffer.length >= 6) {
+    const signature = buffer.toString("ascii", 0, 6);
+    if (signature === "GIF87a" || signature === "GIF89a") {
+      return "image/gif";
+    }
+  }
+  if (buffer.length >= 12) {
+    const riff = buffer.toString("ascii", 0, 4);
+    const format = buffer.toString("ascii", 8, 12);
+    if (riff === "RIFF" && format === "WEBP") {
+      return "image/webp";
+    }
+    if (riff === "RIFF") {
+      const brand = format.toLowerCase();
+      if (["avif", "avis", "av01"].includes(brand)) {
+        return "image/avif";
+      }
+    }
+  }
+  if (buffer.length >= 4) {
+    if (buffer[0] === 0x42 && buffer[1] === 0x4d) {
+      return "image/bmp";
+    }
+    const littleTiff = buffer[0] === 0x49 && buffer[1] === 0x49 && buffer[2] === 0x2a && buffer[3] === 0x00;
+    const bigTiff = buffer[0] === 0x4d && buffer[1] === 0x4d && buffer[2] === 0x00 && buffer[3] === 0x2a;
+    if (littleTiff || bigTiff) {
+      return "image/tiff";
+    }
+  }
+  if (buffer.length >= 12) {
+    const brand = buffer.toString("ascii", 8, 12).toLowerCase();
+    if (["heic", "heix", "hevc", "hevx", "mif1", "msf1"].includes(brand)) {
+      return "image/heic";
+    }
+  }
+  return null;
+}
+
+function mimeFromExtension(fileName: string | null | undefined): string | null {
+  if (!fileName) return null;
+  const normalized = fileName.trim().toLowerCase();
+  const lastDot = normalized.lastIndexOf(".");
+  if (lastDot === -1 || lastDot === normalized.length - 1) {
+    return null;
+  }
+  const ext = normalized.slice(lastDot + 1);
+  const mapping: Record<string, string> = {
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    jpe: "image/jpeg",
+    gif: "image/gif",
+    webp: "image/webp",
+    bmp: "image/bmp",
+    tif: "image/tiff",
+    tiff: "image/tiff",
+    heic: "image/heic",
+    heif: "image/heic",
+    avif: "image/avif",
+    svg: "image/svg+xml"
+  };
+  return mapping[ext] ?? null;
+}
+
+function resolveImageMimeType(
+  buffer: Buffer,
+  declared?: string | null,
+  fileName?: string | null
+): { mimeType: string; warnings: string[] } {
+  const warnings: string[] = [];
+  const normalizedDeclared = normalizeMimeType(declared);
+
+  if (normalizedDeclared) {
+    if (normalizedDeclared.startsWith("image/")) {
+      return { mimeType: normalizedDeclared, warnings };
+    }
+    warnings.push(
+      `Received non-image content type (${normalizedDeclared}); attempting to infer the correct image MIME type.`
+    );
+  }
+
+  const sniffed = sniffImageMimeType(buffer);
+  if (sniffed) {
+    if (normalizedDeclared && normalizedDeclared !== sniffed) {
+      warnings.push(
+        `Provided MIME type ${normalizedDeclared} did not match the detected type ${sniffed}. Using the detected type.`
+      );
+    }
+    return { mimeType: sniffed, warnings };
+  }
+
+  const inferred = mimeFromExtension(fileName);
+  if (inferred) {
+    warnings.push(`Unable to verify MIME type from binary data. Falling back to ${inferred} based on the file name.`);
+    return { mimeType: inferred, warnings };
+  }
+
+  warnings.push("Unable to determine image MIME type. Defaulting to image/png.");
+  return { mimeType: "image/png", warnings };
+}
+
 async function loadDocumentPages(file: ProjectFileRow, project: ProjectRow): Promise<DocumentLoadResult> {
   const buffer = await readStoredFile(file.storagePath);
   if (!buffer) {
     throw new ProcessingRunError("Stored file is no longer available", { retryable: false });
   }
 
-  if (project.fileType === "image") {
-    throw new ProcessingRunError(
-      "Image-based projects require OCR text before LLM processing. Provide OCR output for each page.",
-      { retryable: false }
-    );
-  }
-
   const pages: DocumentPage[] = [];
   const warnings: string[] = [];
 
-  if (project.fileType === "pdf") {
-    const parsePdf = await getPdfParser();
-    let parsed;
+  if (project.fileType === "image") {
+    const { mimeType, warnings: mimeWarnings } = resolveImageMimeType(buffer, file.contentType, file.originalName);
+    warnings.push(...mimeWarnings);
+
+    pages.push({
+      pageNumber: 1,
+      textContent: null,
+      images: [
+        {
+          data: buffer.toString("base64"),
+          mimeType,
+          source: file.originalName,
+          byteLength: buffer.length
+        }
+      ],
+      metadata: {
+        originalName: file.originalName,
+        sizeBytes: buffer.length
+      }
+    });
+  } else if (project.fileType === "pdf") {
+    let textSegments: string[] | null = null;
     try {
-      parsed = await parsePdf(buffer);
+      const parsePdf = await getPdfParser();
+      const parsed = await parsePdf(buffer);
+      const text = parsed.text ?? "";
+      const segments = text.split(/\f/g);
+      textSegments = segments.length ? segments : [text];
     } catch (error) {
       const message =
         error instanceof Error
           ? `Failed to parse PDF for text extraction: ${error.message}`
           : "Failed to parse PDF for text extraction.";
+      warnings.push(`${message} Continuing with rendered pages.`);
+    }
+
+    let renderResult;
+    try {
+      renderResult = await renderPdfToImages(buffer, { maxPages: MAX_PAGES_PER_RUN });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? `Failed to render PDF pages as images: ${error.message}`
+          : "Failed to render PDF pages as images.";
       throw new ProcessingRunError(message, { retryable: false });
     }
-    const text = parsed.text ?? "";
-    const segments = text.split(/\f/g);
-    const normalized = segments.length ? segments : [text];
 
-    normalized.slice(0, MAX_PAGES_PER_RUN).forEach((segment, index) => {
-      const trimmed = segment.trim();
-      if (!trimmed) {
-        pages.push({
-          pageNumber: index + 1,
-          textContent: null,
-          metadata: {
-            note: "No extractable text returned by the PDF parser for this page.",
-            originalName: file.originalName
+    const { pages: renderedPages, totalPages } = renderResult;
+    if (!renderedPages.length) {
+      throw new ProcessingRunError("No renderable pages were found in the PDF", { retryable: false });
+    }
+
+    renderedPages.forEach((renderedPage) => {
+      const pageIndex = renderedPage.pageNumber - 1;
+      const segment = textSegments ? textSegments[pageIndex] ?? "" : "";
+      let textContent: string | null = null;
+
+      if (textSegments) {
+        const trimmed = segment.trim();
+        if (trimmed) {
+          const { value, truncated } = truncateForPrompt(trimmed);
+          textContent = value;
+          if (truncated) {
+            warnings.push(
+              `Page ${renderedPage.pageNumber} text was truncated to ${MAX_TEXT_PER_PAGE} characters for processing.`
+            );
           }
-        });
-        warnings.push(`Page ${index + 1} did not include extractable text.`);
-        return;
-      }
-      const { value, truncated } = truncateForPrompt(trimmed);
-      if (truncated) {
-        warnings.push(`Page ${index + 1} text was truncated to ${MAX_TEXT_PER_PAGE} characters for processing.`);
-      }
-      pages.push({
-        pageNumber: index + 1,
-        textContent: value,
-        metadata: {
-          originalName: file.originalName
+        } else {
+          warnings.push(`Page ${renderedPage.pageNumber} did not include extractable text.`);
         }
+      }
+
+      const imageBuffer = renderedPage.data;
+      const metadata: Record<string, unknown> = {
+        originalName: file.originalName,
+        width: renderedPage.width,
+        height: renderedPage.height,
+        byteSize: imageBuffer.length
+      };
+
+      if (!textContent) {
+        metadata.note = "Text extraction was unavailable; rely on the rendered image for analysis.";
+      }
+
+      pages.push({
+        pageNumber: renderedPage.pageNumber,
+        textContent,
+        images: [
+          {
+            data: imageBuffer.toString("base64"),
+            mimeType: renderedPage.mimeType,
+            source: file.originalName,
+            byteLength: imageBuffer.length
+          }
+        ],
+        metadata
       });
     });
 
-    if (normalized.length > MAX_PAGES_PER_RUN) {
+    if (totalPages > MAX_PAGES_PER_RUN) {
       warnings.push(
         `Only the first ${MAX_PAGES_PER_RUN} pages were processed due to safety limits. Remaining pages were skipped.`
       );
     }
+  } else {
+    throw new ProcessingRunError("Unsupported project file type", { retryable: false });
   }
 
   if (!pages.length) {
@@ -490,7 +671,7 @@ export async function processRun(runId: string, attempt: number): Promise<void> 
       });
     }
     const tokenEstimate = loadResult.pages.reduce(
-      (total, page) => total + approximateTokenCount(page.textContent),
+      (total, page) => total + estimateTokensForPage(page),
       0
     );
 
