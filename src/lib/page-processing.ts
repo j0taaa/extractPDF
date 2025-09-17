@@ -1,16 +1,24 @@
 import type { InstructionField, InstructionSet } from "@/lib/instruction-sets";
 import {
   type ChatMessage,
+  type ChatMessageContentSegment,
   type LanguageModel,
   type LlmUsage,
   OpenRouterClient,
   describeFieldsForPrompt
 } from "@/lib/llm-client";
 
+export type DocumentPageImage = {
+  data: string;
+  mimeType: string;
+  source?: string | null;
+  byteLength?: number;
+};
+
 export type DocumentPage = {
   pageNumber: number;
   textContent?: string | null;
-  images?: string[];
+  images?: DocumentPageImage[];
   metadata?: Record<string, unknown>;
 };
 
@@ -192,21 +200,40 @@ function buildPageMessages(params: {
 
   const textBlockDelimiter = "```";
 
-  const userContentParts = [
+  const textBlock = [
     `Document page number: ${page.pageNumber}.`,
     "Extracted text content:",
     textBlockDelimiter,
     textContent,
     textBlockDelimiter
-  ];
+  ].join("\n");
+
+  const userSegments: ChatMessageContentSegment[] = [{
+    type: "text",
+    text: textBlock
+  }];
 
   if (page.images?.length) {
-    userContentParts.push("Associated image references:", page.images.map((url) => `- ${url}`).join("\n"));
+    page.images.forEach((image, index) => {
+      const descriptor = page.images && page.images.length > 1 ? `Page image ${index + 1}` : "Page image";
+      const details = [descriptor];
+      if (image.source) {
+        details.push(`source: ${image.source}`);
+      }
+      const description = `${details.join(" | ")}.`;
+      userSegments.push({ type: "text", text: description });
+      userSegments.push({
+        type: "image_url",
+        image_url: buildImageDataUri(image)
+      });
+    });
+  } else {
+    userSegments.push({ type: "text", text: "No page imagery was provided." });
   }
 
   if (page.metadata && Object.keys(page.metadata).length) {
-    userContentParts.push("Additional metadata:");
-    userContentParts.push(JSON.stringify(page.metadata, null, 2));
+    const metadataBlock = ["Additional metadata:", JSON.stringify(page.metadata, null, 2)].join("\n");
+    userSegments.push({ type: "text", text: metadataBlock });
   }
 
   return [
@@ -216,7 +243,7 @@ function buildPageMessages(params: {
     },
     {
       role: "user",
-      content: userContentParts.join("\n")
+      content: userSegments
     }
   ];
 }
@@ -328,4 +355,10 @@ function safeJsonParse<T>(input: string): SafeJsonParseResult<T> {
       error: error instanceof Error ? error.message : "Model response was not valid JSON"
     };
   }
+}
+
+function buildImageDataUri(image: DocumentPageImage): string {
+  const mimeType = image.mimeType?.trim().length ? image.mimeType : "image/png";
+  const normalizedData = image.data.replace(/\s+/g, "");
+  return `data:${mimeType};base64,${normalizedData}`;
 }

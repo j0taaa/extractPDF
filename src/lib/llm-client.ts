@@ -4,9 +4,39 @@ export const DEFAULT_OPENROUTER_MODEL = "google/gemini-2.5-flash";
 
 export type ChatMessageRole = "system" | "user" | "assistant";
 
+export type ChatMessageTextSegment = {
+  type: "text" | "input_text";
+  text: string;
+};
+
+export type ChatMessageImageUrl =
+  | string
+  | {
+      url: string;
+      detail?: "auto" | "low" | "high";
+    };
+
+export type ChatMessageImageSegment = {
+  type: "image_url";
+  image_url: ChatMessageImageUrl;
+};
+
+export type ChatMessageInputImageSegment = {
+  type: "input_image";
+  image_base64: string;
+  mime_type?: string;
+};
+
+export type ChatMessageContentSegment =
+  | ChatMessageTextSegment
+  | ChatMessageImageSegment
+  | ChatMessageInputImageSegment;
+
+export type ChatMessageContent = string | ChatMessageContentSegment[];
+
 export type ChatMessage = {
   role: ChatMessageRole;
-  content: string;
+  content: ChatMessageContent;
 };
 
 export type LlmCompletionOptions = {
