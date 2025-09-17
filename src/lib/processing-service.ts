@@ -72,6 +72,52 @@ export class ProcessingRunError extends Error {
   }
 }
 
+function serializeJson(value: unknown): string | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch (error) {
+    return JSON.stringify(String(value));
+  }
+}
+
+function parseJsonValue<T>(value: unknown): T | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value === "string") {
+    if (!value.trim()) {
+      return value as unknown as T;
+    }
+
+    try {
+      return JSON.parse(value) as T;
+    } catch (error) {
+      return value as unknown as T;
+    }
+  }
+
+  return value as T;
+}
+
+function parseJsonArray<T>(value: unknown): T[] {
+  const parsed = parseJsonValue<T[]>(value);
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseJsonObject<T>(value: unknown): T | null {
+  const parsed = parseJsonValue<T>(value);
+  return isPlainObject(parsed) ? (parsed as T) : null;
+}
+
 type CreateRunOptions = {
   projectId: string;
   fileId: string;
@@ -196,7 +242,7 @@ export async function logRunEvent(
       runId,
       level,
       message,
-      context: context ?? null
+      context: serializeJson(context)
     })
     .executeTakeFirst();
 }
@@ -327,13 +373,29 @@ async function updateRunStatus(
   updates?: Record<string, unknown>
 ) {
   const db = getDb() as any;
+  const payload: Record<string, unknown> = {
+    status,
+    updatedAt: sql`now()`
+  };
+
+  if (updates) {
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === undefined) {
+        continue;
+      }
+
+      if (key === "warnings" || key === "aggregatedOutput" || key === "usageSummary") {
+        payload[key] = serializeJson(value);
+        continue;
+      }
+
+      payload[key] = value;
+    }
+  }
+
   await db
     .updateTable("projectProcessingRun")
-    .set({
-      status,
-      updatedAt: sql`now()`,
-      ...(updates ?? {})
-    })
+    .set(payload)
     .where("id", "=", runId)
     .executeTakeFirst();
 }
@@ -352,11 +414,11 @@ async function persistPageResults(runId: string, results: PagePromptResult[]) {
     pageNumber: result.pageNumber,
     status: result.error ? "failed" : "succeeded",
     statusCode: typeof result.statusCode === "number" ? result.statusCode : null,
-    entries: result.entries.length ? result.entries : null,
-    rawResponse: result.rawResponse,
-    warnings: result.warnings?.length ? result.warnings : null,
+    entries: serializeJson(result.entries.length ? result.entries : null),
+    rawResponse: result.rawResponse ?? null,
+    warnings: serializeJson(result.warnings?.length ? result.warnings : null),
     error: result.error ?? null,
-    usage: result.tokenUsage ?? null
+    usage: serializeJson(result.tokenUsage ?? null)
   }));
 
   await db.insertInto("projectProcessingPage").values(rows).execute();
@@ -579,8 +641,8 @@ export async function listRunsForProject(projectId: string, limit = 20) {
     startedAt: toIso(row.startedAt),
     completedAt: toIso(row.completedAt),
     error: row.error,
-    warnings: Array.isArray(row.warnings) ? (row.warnings as string[]) : [],
-    usageSummary: (row.usageSummary as TokenUsageSummary | null) ?? null,
+    warnings: parseJsonArray<string>(row.warnings),
+    usageSummary: parseJsonObject<TokenUsageSummary>(row.usageSummary),
     fileName: row.fileName ?? null,
     fileSize: normalizeNumber(row.fileSize)
   }));
@@ -633,9 +695,9 @@ export async function getRunDetail(projectId: string, runId: string) {
       startedAt: toIso(run.startedAt),
       completedAt: toIso(run.completedAt),
       error: run.error,
-      warnings: Array.isArray(run.warnings) ? (run.warnings as string[]) : [],
-      aggregatedOutput: run.aggregatedOutput ?? null,
-      usageSummary: (run.usageSummary as TokenUsageSummary | null) ?? null
+      warnings: parseJsonArray<string>(run.warnings),
+      aggregatedOutput: parseJsonValue<unknown>(run.aggregatedOutput),
+      usageSummary: parseJsonObject<TokenUsageSummary>(run.usageSummary)
     },
     file: file
       ? {
@@ -651,11 +713,11 @@ export async function getRunDetail(projectId: string, runId: string) {
       pageNumber: page.pageNumber,
       status: page.status,
       statusCode: typeof page.statusCode === "number" ? page.statusCode : null,
-      entries: page.entries ?? [],
+      entries: parseJsonArray<Record<string, unknown>>(page.entries),
       rawResponse: page.rawResponse,
-      warnings: Array.isArray(page.warnings) ? page.warnings : [],
+      warnings: parseJsonArray<string>(page.warnings),
       error: page.error,
-      usage: page.usage ?? null,
+      usage: parseJsonObject<TokenUsageSummary>(page.usage),
       createdAt: toIso(page.createdAt),
       updatedAt: toIso(page.updatedAt)
     })),
@@ -663,7 +725,7 @@ export async function getRunDetail(projectId: string, runId: string) {
       id: event.id,
       level: event.level,
       message: event.message,
-      context: event.context ?? null,
+      context: parseJsonValue<unknown>(event.context),
       createdAt: toIso(event.createdAt)
     }))
   };
