@@ -4,6 +4,8 @@ import { getDb } from "@/db/client";
 import { getCurrentUserId } from "@/lib/auth";
 import { FILE_TYPES, getInstructionSet } from "@/lib/instruction-sets";
 import { getProcessingProgress, listRunsForProject } from "@/lib/processing-service";
+import { getDefaultTokenSafetyLimit } from "@/lib/server-token-limit";
+import { parseTokenSafetyLimit } from "@/lib/token-limit";
 import { ProjectPageClient } from "./ProjectPageClient";
 
 type ProjectRecord = {
@@ -15,6 +17,7 @@ type ProjectRecord = {
   customPrompt: string | null;
   apiIngestionEnabled: boolean;
   apiToken: string | null;
+  tokenSafetyLimit: string | number | null;
 };
 
 type ProjectFileRecord = {
@@ -64,7 +67,8 @@ export default async function ProjectPage({ params }: { params: { id: string } }
       "instructionSet",
       "customPrompt",
       "apiIngestionEnabled",
-      "apiToken"
+      "apiToken",
+      "tokenSafetyLimit"
     ])
     .where("id", "=", id)
     .where("ownerId", "=", userId)
@@ -133,7 +137,11 @@ export default async function ProjectPage({ params }: { params: { id: string } }
         instructionSetId: project.instructionSet,
         customPrompt: project.customPrompt,
         apiIngestionEnabled: project.apiIngestionEnabled,
-        apiToken: project.apiToken
+        apiToken: project.apiToken,
+        tokenSafetyLimit: parseTokenSafetyLimit(
+          project.tokenSafetyLimit,
+          getDefaultTokenSafetyLimit()
+        )
       }}
       fileType={{
         label: fileTypeLabel,

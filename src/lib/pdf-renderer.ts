@@ -39,7 +39,14 @@ export async function renderPdfToImages(
   buffer: Buffer,
   options: RenderPdfOptions = {}
 ): Promise<{ pages: RenderedPdfPage[]; totalPages: number }> {
-  const [pdfjsLib, { createCanvas }] = await Promise.all([getPdfModule(), getCanvasModule()]);
+  const [pdfjsLib, canvasModule] = await Promise.all([getPdfModule(), getCanvasModule()]);
+  const canvasLib = canvasModule as typeof import("@napi-rs/canvas");
+  const { createCanvas } = canvasLib;
+  const DOMMatrixCtor = (canvasLib as { DOMMatrix?: unknown }).DOMMatrix;
+
+  if (typeof globalThis.DOMMatrix === "undefined" && typeof DOMMatrixCtor === "function") {
+    (globalThis as Record<string, unknown>).DOMMatrix = DOMMatrixCtor as typeof globalThis.DOMMatrix;
+  }
 
   const initOptions: DocumentInitParameters & { disableWorker?: boolean } = {
     data: buffer,

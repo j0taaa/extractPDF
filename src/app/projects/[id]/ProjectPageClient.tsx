@@ -20,6 +20,7 @@ type ProjectForClient = {
   customPrompt: string | null;
   apiIngestionEnabled: boolean;
   apiToken: string | null;
+  tokenSafetyLimit: number;
 };
 
 type FileTypeInfo = {
@@ -152,6 +153,7 @@ export function ProjectPageClient({
                     files={files}
                     progress={progress}
                     onProgressChange={handleProgressChange}
+                    tokenSafetyLimit={project.tokenSafetyLimit}
                   />
                 ) : null}
                 {section.id === "results" ? (
@@ -275,6 +277,7 @@ type FilesSectionProps = {
   files: FilesPanelProps["initialFiles"];
   progress: ProcessingProgressSnapshot;
   onProgressChange: (progress: ProcessingProgressSnapshot) => void;
+  tokenSafetyLimit: number;
 };
 
 function FilesSection({
@@ -283,7 +286,8 @@ function FilesSection({
   apiToken,
   files,
   progress,
-  onProgressChange
+  onProgressChange,
+  tokenSafetyLimit
 }: FilesSectionProps) {
   return (
     <div className="space-y-6">
@@ -297,6 +301,7 @@ function FilesSection({
         initialFiles={files}
         progress={progress}
         onProgressChange={onProgressChange}
+        initialTokenSafetyLimit={tokenSafetyLimit}
       />
     </div>
   );
