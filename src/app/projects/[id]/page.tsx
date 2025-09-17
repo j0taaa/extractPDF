@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getDb } from "@/db/client";
 import { getCurrentUserId } from "@/lib/auth";
 import { FILE_TYPES, getInstructionSet } from "@/lib/instruction-sets";
-import { listRunsForProject } from "@/lib/processing-service";
+import { getProcessingProgress, listRunsForProject } from "@/lib/processing-service";
 import { ProjectPageClient } from "./ProjectPageClient";
 
 type ProjectRecord = {
@@ -121,6 +121,8 @@ export default async function ProjectPage({ params }: { params: { id: string } }
   const fileTypeLabel = fileType?.label ?? project.fileType;
   const fileTypeDescription = fileType?.description ?? null;
 
+  const processingProgress = await getProcessingProgress(project.id);
+
   return (
     <ProjectPageClient
       project={{
@@ -141,6 +143,7 @@ export default async function ProjectPage({ params }: { params: { id: string } }
       files={files}
       processingRuns={processingRuns}
       processingSummary={processingSummary}
+      processingProgress={processingProgress}
     />
   );
 }

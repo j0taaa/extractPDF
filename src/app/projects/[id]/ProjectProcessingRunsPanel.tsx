@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import type { AggregatedFolderNode, ProcessingProgressSnapshot } from "@/lib/processing-types";
+
 type TokenUsageSummary = {
   promptTokens?: number;
   completionTokens?: number;
@@ -80,6 +82,7 @@ type Props = {
   projectId: string;
   initialRuns: ProcessingRunSummary[];
   initialSummary: ProcessingSummaryTotals;
+  onProgressChange?: (progress: ProcessingProgressSnapshot) => void;
 };
 
 type LoadState = "idle" | "loading";
@@ -141,7 +144,7 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${classes}`}>{label}</span>;
 }
 
-export function ProjectProcessingRunsPanel({ projectId, initialRuns, initialSummary }: Props) {
+export function ProjectProcessingRunsPanel({ projectId, initialRuns, initialSummary, onProgressChange }: Props) {
   const [runs, setRuns] = useState<ProcessingRunSummary[]>(initialRuns);
   const [summary, setSummary] = useState<ProcessingSummaryTotals>(initialSummary);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(initialRuns[0]?.id ?? null);
@@ -150,17 +153,60 @@ export function ProjectProcessingRunsPanel({ projectId, initialRuns, initialSumm
   const [detailState, setDetailState] = useState<LoadState>("idle");
   const [listError, setListError] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [aggregationState, setAggregationState] = useState<LoadState>("idle");
+  const [aggregationError, setAggregationError] = useState<string | null>(null);
+  const [aggregatedNodes, setAggregatedNodes] = useState<AggregatedFolderNode[]>([]);
 
   const hasActiveRuns = useMemo(
     () => runs.some((run) => run.status === "pending" || run.status === "running"),
     [runs]
   );
 
+  const refreshProgress = useCallback(async () => {
+    if (!onProgressChange) {
+      return;
+    }
+    try {
+      const response = await fetch(`/api/projects/${projectId}/processing/progress`);
+      if (!response.ok) {
+        throw new Error(`Failed to load progress (${response.status})`);
+      }
+      const payload = (await response.json().catch(() => null)) as ProcessingProgressSnapshot | null;
+      if (!payload || typeof payload.totalFiles !== "number") {
+        throw new Error("Unexpected response when loading progress");
+      }
+      onProgressChange(payload);
+    } catch (error) {
+      console.error("Failed to refresh processing progress", error);
+    }
+  }, [projectId, onProgressChange]);
+
+  const fetchAggregatedResults = useCallback(async () => {
+    setAggregationState("loading");
+    setAggregationError(null);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/processing/aggregate`);
+      if (!response.ok) {
+        throw new Error(`Failed to load aggregated results (${response.status})`);
+      }
+      const payload = (await response.json().catch(() => null)) as { nodes: AggregatedFolderNode[] } | null;
+      if (!payload || !Array.isArray(payload.nodes)) {
+        throw new Error("Unexpected response when loading aggregated results");
+      }
+      setAggregatedNodes(payload.nodes);
+    } catch (error) {
+      setAggregatedNodes([]);
+      setAggregationError(error instanceof Error ? error.message : "Unable to load aggregated results");
+    } finally {
+      setAggregationState("idle");
+    }
+  }, [projectId]);
+
   const refreshRuns = useCallback(async () => {
     setListState("loading");
     setListError(null);
     try {
-      const response = await fetch(`/api/projects/${projectId}/processing`);
+      const response = await fetch(`/api/projects/${projectId}/processing?limit=100`);
       if (!response.ok) {
         throw new Error(`Failed to load processing runs (${response.status})`);
       }
@@ -175,12 +221,14 @@ export function ProjectProcessingRunsPanel({ projectId, initialRuns, initialSumm
       if (!payload.runs.some((run) => run.id === selectedRunId)) {
         setSelectedRunId(payload.runs[0]?.id ?? null);
       }
+      await fetchAggregatedResults().catch(() => undefined);
+      await refreshProgress().catch(() => undefined);
     } catch (error) {
       setListError(error instanceof Error ? error.message : "Unable to load processing runs");
     } finally {
       setListState("idle");
     }
-  }, [projectId, selectedRunId]);
+  }, [projectId, selectedRunId, fetchAggregatedResults, refreshProgress]);
 
   const loadDetail = useCallback(
     async (runId: string) => {
@@ -205,6 +253,14 @@ export function ProjectProcessingRunsPanel({ projectId, initialRuns, initialSumm
     },
     [projectId]
   );
+
+  useEffect(() => {
+    fetchAggregatedResults().catch(() => undefined);
+  }, [fetchAggregatedResults]);
+
+  useEffect(() => {
+    refreshProgress().catch(() => undefined);
+  }, [refreshProgress]);
 
   useEffect(() => {
     if (selectedRunId) {
@@ -252,7 +308,7 @@ export function ProjectProcessingRunsPanel({ projectId, initialRuns, initialSumm
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
+      <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1.25fr)] xl:grid-cols-[380px_minmax(0,1.6fr)] 2xl:grid-cols-[440px_minmax(0,2fr)]">
         <div className="space-y-6">
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-900">
             <p className="font-medium text-gray-900 dark:text-gray-100">Usage summary</p>
@@ -330,6 +386,12 @@ export function ProjectProcessingRunsPanel({ projectId, initialRuns, initialSumm
               Select a run from the history to view page outputs and logs.
             </p>
           )}
+          <AggregatedResultsView
+            nodes={aggregatedNodes}
+            state={aggregationState}
+            error={aggregationError}
+            onRefresh={() => fetchAggregatedResults()}
+          />
         </div>
       </div>
     </div>
@@ -547,5 +609,109 @@ function RunDetailView({
         )}
       </section>
     </div>
+  );
+}
+
+function AggregatedResultsView({
+  nodes,
+  state,
+  error,
+  onRefresh
+}: {
+  nodes: AggregatedFolderNode[];
+  state: LoadState;
+  error: string | null;
+  onRefresh: () => void;
+}) {
+  return (
+    <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Aggregated results by folder</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Explore combined outputs grouped by archive structure.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="btn btn-sm btn-outline"
+          onClick={onRefresh}
+          disabled={state === "loading"}
+        >
+          {state === "loading" ? "Refreshing..." : "Refresh"}
+        </button>
+      </div>
+      {error ? <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p> : null}
+      {state === "loading" && !nodes.length ? (
+        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">Loading aggregated results...</p>
+      ) : null}
+      {nodes.length ? (
+        <div className="mt-4 space-y-2 text-xs text-gray-700 dark:text-gray-300">
+          <AggregatedNodeList nodes={nodes} />
+        </div>
+      ) : state === "idle" && !error ? (
+        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">No aggregated results available yet.</p>
+      ) : null}
+    </section>
+  );
+}
+
+function AggregatedNodeList({ nodes }: { nodes: AggregatedFolderNode[] }) {
+  return (
+    <ul className="space-y-2">
+      {nodes.map((node) => (
+        <AggregatedNodeItem key={node.path} node={node} />
+      ))}
+    </ul>
+  );
+}
+
+function AggregatedNodeItem({ node }: { node: AggregatedFolderNode }) {
+  if (node.type === "folder") {
+    const isRoot = !node.path.includes("/");
+    return (
+      <li className="rounded-lg border border-gray-200 dark:border-gray-700">
+        <details className="group" open={isRoot && node.recordCount > 0}>
+          <summary className="flex cursor-pointer items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2 text-xs font-medium text-gray-900 dark:bg-gray-900/40 dark:text-gray-100">
+            <span>{node.name || "Folder"}</span>
+            <span className="text-[11px] font-normal text-gray-500 dark:text-gray-400">
+              {node.recordCount} record{node.recordCount === 1 ? "" : "s"}
+            </span>
+          </summary>
+          <div className="border-t border-gray-200 px-3 py-2 dark:border-gray-700">
+            {node.children?.length ? (
+              <AggregatedNodeList nodes={node.children} />
+            ) : (
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">No files in this folder.</p>
+            )}
+          </div>
+        </details>
+      </li>
+    );
+  }
+
+  return (
+    <li className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900/50">
+      <details>
+        <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-xs font-medium text-gray-900 dark:text-gray-100">
+          <span>{node.name}</span>
+          <span className="text-[11px] font-normal text-gray-500 dark:text-gray-400">
+            {node.recordCount} record{node.recordCount === 1 ? "" : "s"}
+          </span>
+        </summary>
+        <div className="space-y-2 border-t border-gray-200 px-3 py-2 text-[11px] text-gray-700 dark:border-gray-700 dark:text-gray-300">
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+            Run {node.runId ?? "—"} · Status: {node.status ?? "unknown"}
+          </p>
+          {node.records ? (
+            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded bg-gray-100 p-2 text-[11px] text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+              {stringify(node.records)}
+            </pre>
+          ) : (
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">No aggregated output recorded.</p>
+          )}
+        </div>
+      </details>
+    </li>
   );
 }

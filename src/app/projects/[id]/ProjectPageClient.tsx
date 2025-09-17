@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import type { ComponentProps } from "react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { InstructionSet } from "@/lib/instruction-sets";
+import type { ProcessingProgressSnapshot } from "@/lib/processing-types";
 import { ProjectFilesPanel } from "./ProjectFilesPanel";
 import { ProjectIngestionSettings } from "./ProjectIngestionSettings";
 import { ProjectProcessingRunsPanel } from "./ProjectProcessingRunsPanel";
@@ -36,6 +37,7 @@ type Props = {
   files: FilesPanelProps["initialFiles"];
   processingRuns: ProcessingPanelProps["initialRuns"];
   processingSummary: ProcessingPanelProps["initialSummary"];
+  processingProgress: ProcessingProgressSnapshot;
 };
 
 const NAV_SECTIONS: { id: SectionId; label: string; description: string }[] = [
@@ -62,12 +64,21 @@ export function ProjectPageClient({
   instructionSet,
   files,
   processingRuns,
-  processingSummary
+  processingSummary,
+  processingProgress
 }: Props) {
   const [activeSection, setActiveSection] = useState<SectionId>("overview");
+  const [progress, setProgress] = useState<ProcessingProgressSnapshot>(processingProgress);
+
+  const handleProgressChange = useCallback(
+    (next: ProcessingProgressSnapshot) => {
+      setProgress(next);
+    },
+    []
+  );
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 lg:space-y-8 lg:px-8">
+    <div className="mx-auto max-w-screen-2xl space-y-6 px-4 py-6 lg:space-y-8 lg:px-8 xl:px-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold heading-gradient">{project.name}</h1>
@@ -139,6 +150,8 @@ export function ProjectPageClient({
                     apiIngestionEnabled={project.apiIngestionEnabled}
                     apiToken={project.apiToken}
                     files={files}
+                    progress={progress}
+                    onProgressChange={handleProgressChange}
                   />
                 ) : null}
                 {section.id === "results" ? (
@@ -146,6 +159,7 @@ export function ProjectPageClient({
                     projectId={project.id}
                     runs={processingRuns}
                     summary={processingSummary}
+                    onProgressChange={handleProgressChange}
                   />
                 ) : null}
               </section>
@@ -259,9 +273,18 @@ type FilesSectionProps = {
   apiIngestionEnabled: boolean;
   apiToken: string | null;
   files: FilesPanelProps["initialFiles"];
+  progress: ProcessingProgressSnapshot;
+  onProgressChange: (progress: ProcessingProgressSnapshot) => void;
 };
 
-function FilesSection({ projectId, apiIngestionEnabled, apiToken, files }: FilesSectionProps) {
+function FilesSection({
+  projectId,
+  apiIngestionEnabled,
+  apiToken,
+  files,
+  progress,
+  onProgressChange
+}: FilesSectionProps) {
   return (
     <div className="space-y-6">
       <ProjectIngestionSettings
@@ -269,7 +292,12 @@ function FilesSection({ projectId, apiIngestionEnabled, apiToken, files }: Files
         initialEnabled={apiIngestionEnabled}
         initialToken={apiToken}
       />
-      <ProjectFilesPanel projectId={projectId} initialFiles={files} />
+      <ProjectFilesPanel
+        projectId={projectId}
+        initialFiles={files}
+        progress={progress}
+        onProgressChange={onProgressChange}
+      />
     </div>
   );
 }
@@ -278,12 +306,18 @@ type ResultsSectionProps = {
   projectId: string;
   runs: ProcessingPanelProps["initialRuns"];
   summary: ProcessingPanelProps["initialSummary"];
+  onProgressChange: (progress: ProcessingProgressSnapshot) => void;
 };
 
-function ResultsSection({ projectId, runs, summary }: ResultsSectionProps) {
+function ResultsSection({ projectId, runs, summary, onProgressChange }: ResultsSectionProps) {
   return (
     <div className="space-y-6">
-      <ProjectProcessingRunsPanel projectId={projectId} initialRuns={runs} initialSummary={summary} />
+      <ProjectProcessingRunsPanel
+        projectId={projectId}
+        initialRuns={runs}
+        initialSummary={summary}
+        onProgressChange={onProgressChange}
+      />
     </div>
   );
 }
